@@ -1,0 +1,42 @@
+publish data
+ where ot_id = @ot_id
+   and client_id = @client_id
+   and wh_id = @wh_id
+   and addusr = @addusr
+   and instr_seq = @instr_seq
+|
+[select instruction,
+        prt_client_id client_id,
+        wh_id,
+        ordqty + 1 qty,
+        ot_id
+   from uc_order_instr
+  where ot_id = @ot_id
+    and prt_client_id = @client_id
+    and wh_id = @wh_id
+    and rowid = @instr_seq] catch(@?)
+|
+convert list
+ where string = @instruction
+   and separator = ' '
+   and type = 'L'
+|
+[select prtnum
+   from prtmst
+  where prtnum = substr(@retstr, 0, instr(@retstr, '_') -1)
+    and prt_client_id = @client_id
+    and wh_id_tmpl = @wh_id
+    and prtfam = 'MATEMPAQUE'] catch(@?)
+|
+if (@? = 0)
+{
+    [select nvl(max(ot_line), 0) + 1 ot_line
+       from ap_batch_c_surtido
+      where ot_id = @ot_id
+        and client_id = @client_id
+        and wh_id = @wh_id] catch(@?)
+    |
+    [insert
+       into ap_batch_c_surtido(id, ot_id, prtnum, qty, addusr, adddte, ot_line, client_id, wh_id, priority)
+     values (ap_batch_c_surtido_seq.nextval, @ot_id, @prtnum, @qty, nvl(@addusr, @@usr_id), sysdate, @ot_line, @client_id, @wh_id, '99')];
+}
