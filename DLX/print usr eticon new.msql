@@ -196,7 +196,7 @@ publish data
             and vc_otmst.client_id = @client_id
             and vc_otmst.wh_id = @wh_id] catch(@?)
         |
-        if (@parcial > 0)
+        if (@parcial > 0 or @client_id = 'C50')
         {
             [select wkohdr.prtnum,
                     prtdsc.lngdsc,
@@ -246,6 +246,15 @@ publish data
                    from dual]
             }
             |
+            if (@client_id = 'C50')
+            {
+                publish data
+                 where copies = 2
+            }
+            |
+            publish data
+             where copies = @copies
+            |
             if (@prtque = 'farzebra1')
             {
                 generate label
@@ -254,7 +263,7 @@ publish data
                 |
                 print file
                  where filename = @outfile_name
-                   and copies = 1
+                   and copies = nvl(@copies, 1)
                    and printer = @prtque
                    and wh_id = @wh_id
             }
@@ -266,7 +275,7 @@ publish data
                 |
                 print file
                  where filename = @outfile_name
-                   and copies = 1
+                   and copies = nvl(@copies, 1)
                    and printer = @prtque
                    and wh_id = @wh_id
             }
