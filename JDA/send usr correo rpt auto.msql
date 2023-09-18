@@ -1,0 +1,559 @@
+/*send usr correo rpt auto*/
+publish data
+ where to = 'ralvarez@cainco.com;ddobras@cainco.com'
+   and from = 'jda@cainco.com'
+|
+[select rowid,
+        client_id,
+        wh_id,
+        ordnum,
+        type
+   from uc_acuse_inter_auto
+  where nvl(sendflg, 0) = 0
+    and (nvl(errorflg, 0) = 0 or (errorflg = 1 and round(24 *(sysdate - errordte)) >= 1))
+    and rownum < 2
+  order by client_id,
+        adddte] catch(@?)
+|
+if (@? = 0)
+{
+    try
+    {
+        /*[begin
+           dbms_lock.sleep(4);
+           end;];*/
+        [select translate_wms(adr.adrnam || ' - ' || adr2.adrnam) ord_adrnam,
+                cst.cstnum,
+                translate_wms(dscmst.lngdsc) pais
+           from ord
+           left
+           join cstmst cst
+             on ord.stcust = cst.cstnum
+            and ord.client_id = cst.client_id
+           left
+           join adrmst adr
+             on (adr.adr_id = cst.adr_id)
+            and adr.adrtyp = 'CST'
+           left
+           join dscmst
+             on dscmst.colnam = 'ctry_name'
+            and dscmst.locale_id = 'US_ENGLISH'
+            and dscmst.colval = adr.ctry_name
+           left
+           join client
+             on client.client_id = ord.client_id
+           left
+           join adrmst adr2
+             on adr2.adr_id = client.adr_id
+          where ord.ordnum = @ordnum
+            and ord.client_id = @client_id
+            and ord.wh_id = @wh_id
+            and rownum < 2] catch(@?)
+        |
+        if (@type = 'CREATE_ORDER_RPT')
+        {
+            if (@client_id = 'C103' or @client_id = 'CTEST' or @client_id = 'C110' or @client_id = 'C111' or @client_id = 'C120')
+            {
+                generate moca report
+                 WHERE format_typ = 'pdf'
+                   AND locale_id = 'US_ENGLISH'
+                   AND wh_id = @wh_id
+                   AND lang_flg = '0'
+                   AND distri_flg = '0'
+                   AND emsjcain_flg = 1
+                   AND cstnum = @cstnum
+                   AND num_copies = null
+                   AND ordnum = @ordnum
+                   AND gen_usr_id = 'UREPORTE'
+                   AND rpt_id = 'Usr-CreacionOrdenDistribuidor'
+                   AND dest = null
+                   AND logemsevt = '1'
+                   AND client_id = @client_id
+                   AND adrnam = @ord_adrnam
+                   AND keep_days = 1 catch(@?)
+                |
+                if (@? = 0)
+                {
+                    publish data
+                     where gen_rpt = 'OK'
+                }
+                else
+                {
+                    publish data
+                     where gen_rpt = @!
+                }
+            }
+            else
+            {
+                [select ' - Pedido Cliente: ' || cponum extrasubj
+                   from ord
+                  where client_id = @client_id
+                    and ordnum = @ordnum
+                    and wh_id = @wh_id
+                    and client_id in ('C00', 'C141', 'C140')
+                    and rownum < 2] catch(@?)
+                |
+                generate moca report
+                 WHERE format_typ = 'pdf'
+                   AND locale_id = 'US_ENGLISH'
+                   AND wh_id = @wh_id
+                   AND lang_flg = '0'
+                   AND distri_flg = '0'
+                   AND emsjcain_flg = 1
+                   AND cstnum = @cstnum
+                   AND num_copies = null
+                   AND ordnum = @ordnum
+                   AND subject = 'Creacion de orden' || @extrasubj
+                   AND gen_usr_id = 'UREPORTE'
+                   AND rpt_id = 'Usr-InterfaceError_Pedido'
+                   AND dest = null
+                   AND logemsevt = '1'
+                   AND client_id = @client_id
+                   AND adrnam = @ord_adrnam
+                   AND keep_days = 1 catch(@?)
+                |
+                if (@? = 0)
+                {
+                    publish data
+                     where gen_rpt = 'OK'
+                }
+                else
+                {
+                    publish data
+                     where gen_rpt = @!
+                }
+            }
+            |
+            publish data
+             where gen_rpt = @gen_rpt
+        }
+        else if (@type = 'CREATE_ORDER_DIST_RPT')
+        {
+            [select adrnam cli_adrnam
+               from client
+               left
+               join adrmst
+                 on adrmst.adr_id = client.adr_id
+              where client.client_id = @client_id] catch(@?)
+            |
+            [select adrnam ord_adrnam
+               from ap_uebv_ord
+               left
+               join cstmst cst
+                 on ap_uebv_ord.cstnum = cst.cstnum
+                and ap_uebv_ord.client_id = cst.client_id
+               left
+               join adrmst adr
+                 on (adr.adr_id = cst.adr_id)
+                and adr.adrtyp = 'CST'
+              where ap_uebv_ord.ordnum = @ordnum
+                and ap_uebv_ord.client_id = @client_id] catch(@?)
+            |
+            generate moca report
+             WHERE format_typ = 'pdf'
+               AND locale_id = 'US_ENGLISH'
+               AND wh_id = @wh_id
+               AND lang_flg = '0'
+               AND distri_flg = '1'
+               AND emsjcain_flg = 1
+               AND cstnum = @cstnum
+               AND num_copies = null
+               AND ordnum = @ordnum
+               AND gen_usr_id = 'UREPORTE'
+               AND rpt_id = 'Usr-CreacionOrdenDistribuidor'
+               AND dest = null
+               AND logemsevt = '1'
+               AND client_id = @client_id
+               AND adrnam = @cli_adrnam || ' - ' || @ord_adrnam
+               AND keep_days = 1 catch(@?)
+            |
+            if (@? = 0)
+            {
+                publish data
+                 where gen_rpt = 'OK'
+            }
+            else
+            {
+                publish data
+                 where gen_rpt = @!
+            }
+        }
+        else if (@type = 'ERROR_ORDER_RPT')
+        {
+            if (@client_id = 'C00' or @client_id = 'C141' or @client_id = 'C140')
+            {
+                [select ordnum,
+                        client_id,
+                        wh_id,
+                        ord_rept_flg,
+                        cponum
+                   from uc_inter_error
+                  where client_id = @client_id
+                    and ordnum = @ordnum
+                    and wh_id = @wh_id
+                  order by ins_dt desc] catch(@?) >> res
+                |
+                publish top rows
+                 where rows = 1
+                   and resultset = @res
+                |
+                if (@? = 0)
+                {
+                    if (@ord_rept_flg = 1)
+                    {
+                        publish data
+                         where subject = 'Orden Repetida'
+                    }
+                    else
+                    {
+                        publish data
+                         where subject = 'Orden con problema'
+                    }
+                    |
+                    generate MOCA report
+                     WHERE format_typ = 'pdf'
+                       AND locale_id = 'US_ENGLISH'
+                       AND wh_id = @wh_id
+                       AND lang_flg = '0'
+                       AND num_copies = null
+                       AND ordnum = @ordnum
+                       AND subject = @subject || ' - Pedido Cliente ' || @cponum
+                       AND adrnam = @ord_adrnam
+                       AND emsjcain_flg = 1
+                       AND gen_usr_id = 'UREPORTE'
+                       AND rpt_id = 'Usr-InterfaceError_Pedido'
+                       AND dest = null
+                       AND logemsevt = 1
+                       AND client_id = @client_id
+                       AND keep_days = 1 catch(@?)
+                    |
+                    if (@? = 0)
+                    {
+                        publish data
+                         where gen_rpt = 'OK'
+                    }
+                    else
+                    {
+                        publish data
+                         where gen_rpt = @!
+                    }
+                }
+                |
+                publish data
+                 where gen_rpt = @gen_rpt
+            }
+            else
+            {
+                generate MOCA report
+                 WHERE format_typ = 'pdf'
+                   AND locale_id = 'US_ENGLISH'
+                   AND wh_id = @wh_id
+                   AND lang_flg = '0'
+                   AND num_copies = null
+                   AND ordnum = @ordnum
+                   AND subject = 'Orden con problema'
+                   AND emsjcain_flg = 1
+                   AND gen_usr_id = 'UREPORTE'
+                   AND rpt_id = 'Usr-InterfaceError_Pedido'
+                   AND dest = null
+                   AND logemsevt = 1
+                   AND client_id = @client_id
+                   AND keep_days = 1 catch(@?)
+                |
+                if (@? = 0)
+                {
+                    publish data
+                     where gen_rpt = 'OK'
+                }
+                else
+                {
+                    publish data
+                     where gen_rpt = @!
+                }
+            }
+            |
+            publish data
+             where gen_rpt = @gen_rpt
+        }
+        else if (@type = 'FACT_SIMPLE_RPT')
+        {
+            [select ' - Pedido Cliente: ' || cponum extrasubj
+               from ord
+              where client_id = @client_id
+                and ordnum = @ordnum
+                and wh_id = @wh_id
+                and client_id in ('C00', 'C141', 'C140')
+                and rownum < 2] catch(@?)
+            |
+            [select invoice
+               from uc_trace_shp
+              where client_id = @client_id
+                and ordnum = @ordnum
+                and wh_id = @wh_id
+                and rownum < 2] catch(@?)
+            |
+            generate MOCA report
+             WHERE original_flg = '0'
+               AND bonificacion_flg = '0'
+               AND emsjcain_flg = 1
+               AND num_copies = null
+               AND rpt_id = 'Usr_Rep_Fact_Cli_Manual_Simple'
+               AND dest = null
+               AND logemsevt = 1
+               AND client_id = @client_id
+               AND format_typ = 'pdf'
+               AND locale_id = 'US_ENGLISH'
+               AND wh_id = @wh_id
+               AND moneda = 'USD'
+               AND ordnum = @ordnum
+               AND invoice = @invoice
+               AND extrasubj = @extrasubj
+               AND adrnam = @ord_adrnam
+               and pais = @pais
+               AND gen_usr_id = 'UREPORTE'
+               AND facturar_flg = '0'
+               AND keep_days = 1 catch(@?)
+            |
+            if (@? = 0)
+            {
+                publish data
+                 where gen_rpt = 'OK'
+            }
+            else
+            {
+                publish data
+                 where gen_rpt = @!
+            }
+        }
+        else if (@type = 'PACK_LIST_RPT')
+        {
+            raise var ems event for generate excel file pl
+             where ordnum = @ordnum
+               and client_id = @client_id
+               and wh_id = @wh_id
+               and adrnam = @ord_adrnam
+               and ctry_name = @pais catch(@?)
+            |
+            if (@? = 0)
+            {
+                publish data
+                 where gen_rpt = 'OK'
+            }
+            else
+            {
+                publish data
+                 where gen_rpt = @!
+            }
+            |
+            publish data
+             where gen_rpt = @gen_rpt
+        }
+        else if (@type = 'UC_INSP_ENT_RPT')
+        {
+            [select 'camion ' || trknum tipoinsp
+               from uc_insp_ent
+              where client_id = @client_id
+                and form_id = @ordnum
+                and wh_id = @wh_id
+                and rownum < 2] catch(@?)
+            |
+            if (@client_id = 'C103')
+            {
+                generate moca report
+                 WHERE format_typ = 'pdf'
+                   AND locale_id = 'US_ENGLISH'
+                   AND wh_id = @wh_id
+                   AND num_copies = null
+                   AND form_id = @ordnum
+                   AND gen_usr_id = 'UREPORTE'
+                   AND rpt_id = 'Usr-RptInspeccion'
+                   AND dest = null
+                   AND logemsevt = 1
+                   AND client_id = @client_id
+                   AND keep_days = 1
+                   AND tipoinsp = @tipoinsp catch(@?)
+                |
+                if (@? = 0)
+                {
+                    publish data
+                     where gen_rpt = 'OK'
+                }
+                else
+                {
+                    publish data
+                     where gen_rpt = @!
+                }
+            }
+            else
+            {
+                generate moca report
+                 WHERE format_typ = 'pdf'
+                   AND locale_id = 'US_ENGLISH'
+                   AND wh_id = @wh_id
+                   AND num_copies = null
+                   AND form_id = @ordnum
+                   AND gen_usr_id = 'UREPORTE'
+                   AND rpt_id = 'Usr-RptInspeccion_v2'
+                   AND dest = null
+                   AND logemsevt = 1
+                   AND client_id = @client_id
+                   AND keep_days = 1
+                   AND tipoinsp = @tipoinsp catch(@?)
+                |
+                if (@? = 0)
+                {
+                    publish data
+                     where gen_rpt = 'OK'
+                }
+                else
+                {
+                    publish data
+                     where gen_rpt = @!
+                }
+            }
+            |
+            publish data
+             where gen_rpt = @gen_rpt
+        }
+        else if (@type = 'PACK_LIST_RPT_FARMA')
+        {
+         
+            [select adrnam adrnam,
+                    ctry_name,
+                    d.lngdsc pais
+               from ord
+               left
+               join cstmst cst
+                 on ord.stcust = cst.cstnum
+                and ord.client_id = cst.client_id
+               left
+               join adrmst adr
+                 on (adr.adr_id = cst.adr_id)
+                and adr.adrtyp = 'CST'
+               left
+               join dscmst d
+                 on d.colnam = 'ctry_name'
+                and d.colval = adr.ctry_name
+                and d.locale_id = 'US_ENGLISH'
+              where ord.ordnum = @ordnum
+                and ord.client_id = @client_id] catch(@?)
+            |
+            generate MOCA report
+             WHERE format_typ = 'pdf'
+               AND locale_id = 'US_ENGLISH'
+               AND wh_id = @wh_id
+               AND num_copies = null
+               AND ordnum = @ordnum
+               AND gen_usr_id = 'UREPORTE'
+               AND rpt_id = 'Usr-RptPackingListShpFarma'
+               AND dest = null
+               AND logemsevt = 1
+               AND emsjcain_flg = 1
+               AND granel_flg = 0
+               AND client_id = @client_id
+               AND extrasubj = @extrasubj
+               and adrnam = @adrnam
+               and pais = @pais
+               AND keep_days = 1 catch(@?)
+            |
+            if (@? = 0)
+            {
+                publish data
+                 where gen_rpt = 'OK'
+            }
+            else
+            {
+                publish data
+                 where gen_rpt = @!
+            }
+            |
+            publish data
+             where gen_rpt = @gen_rpt
+        }
+        else
+        {
+            publish data
+             where gen_rpt = 'Tipo ' || @type || ' no mapeado'
+               and send = 'favor validar'
+        }
+        |
+        if (@gen_rpt = 'OK')
+        {
+            [UPDATE uc_acuse_inter_auto
+                SET sendflg = 1,
+                    senddte = sysdate
+              where wh_id = @wh_id
+                and client_id = @client_id
+                and ordnum = @ordnum
+                and rowid = @rowid
+                and type = @type] catch(@?)
+            |
+            if (@? = 0)
+            {
+                publish data
+                 where send = 'OK'
+            }
+            else
+            {
+                publish data
+                 where send = 'Error update ' || @!
+            }
+            |
+            publish data
+             where send = @send
+        }
+        |
+        if (@gen_rpt = 'OK' and @send = 'OK')
+        {
+            commit;
+            publish data
+             where gen_rpt = @gen_rpt
+               and send = @send;
+        }
+        else
+        {
+            rollback;
+            [UPDATE uc_acuse_inter_auto
+                SET errorflg = 1,
+                    errordte = sysdate
+              where wh_id = @wh_id
+                and client_id = @client_id
+                and ordnum = @ordnum
+                and rowid = @rowid
+                and type = @type] catch(@?);
+            send email
+             where from = @from
+               and msg = 'Error: ' || @gen_rpt || '  ' || @send
+               and host_name = '192.168.100.186'
+               and port = 25
+               and subject = 'Error al enviar reporte automático, pedido: ' || @ordnum || ' - Tipo ' || @type
+               and to = @to;
+            publish data
+             where gen_rpt = @gen_rpt
+               and send = @send;
+        }
+    } catch(@?)
+    {
+        publish data
+         where error = @!
+        |
+        rollback
+        |
+        [UPDATE uc_acuse_inter_auto
+            SET errorflg = 1,
+                errordte = sysdate
+          where wh_id = @wh_id
+            and client_id = @client_id
+            and ordnum = @ordnum
+            and rowid = @rowid
+            and type = @type] catch(@?)
+        |
+        send email
+         where from = @from
+           and msg = 'Error inseperado: ' || @error
+           and host_name = '192.168.100.186'
+           and port = 25
+           and subject = 'Error al enviar reporte automático, pedido' || @ordnum || ' - Tipo ' || @type
+           and to = @to;
+    }
+}
