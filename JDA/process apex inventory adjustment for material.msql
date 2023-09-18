@@ -1,0 +1,243 @@
+publish data
+ where ot_id = @ot_id
+   and client_id = @client_id
+   and wh_id = @wh_id
+|
+try
+{
+    /*obteniendo o asignando sesmun por ot*/
+    [select sesnum
+       from ap_batch_c_surtido
+      where client_id = @client_id
+        and wh_id = @wh_id
+        and (ot_id = @ot_id or (ordnum = @ref and tipo = 'PEDIDO') or (batch_id = @ref and tipo = 'BATCH'))
+        and sesnum is not null
+        and rownum < 2] catch(@?)
+    |
+    if (@sesnum is null)
+    {
+        generate next number
+         WHERE numcod = 'sesnum'
+        |
+        [update ap_batch_c_surtido
+            set sesnum = @nxtnum
+          where client_id = @client_id
+            and wh_id = @wh_id
+            and (ot_id = @ot_id or (ordnum = @ref and tipo = 'PEDIDO') or (batch_id = @ref and tipo = 'BATCH'))
+            and nvl(na_flg, 0) = 0] catch(@?)
+        |
+        publish data
+         where sesnum = @nxtnum
+    }
+    else
+    {
+        publish data
+         where sesnum = @sesnum
+    }
+    |
+    /*obteniendo lineas sin ajustar*/
+    [select '''' || listagg(rowid, ''',''') within group(order by rowid) || '''' list_rowid,
+            sum(surtqty - nvl(adjqty, 0)) g_surtqty
+       from ap_batch_c_inv_surtido
+      where client_id = @client_id
+        and wh_id = @wh_id
+        and (ot_id = @ot_id or (ordnum = @ref and @tipo = 'PEDIDO') or (batch_id = @ref and @tipo = 'BATCH'))
+        and adjflg = 0
+      group by lodnum,
+            client_id,
+            wh_id,
+            prtnum,
+            lotnum,
+            invsts,
+            stoloc,
+            ordnum,
+            batch_id] catch(@?)
+    |
+    if (@? = 0)
+    {
+        /*obteniendo cantidad disponible en ubicacion*/
+        [select sum(iv.untqty) sto_untqty
+           from inventory_view iv
+           join (select client_id,
+                        wh_id,
+                        lodnum,
+                        prtnum,
+                        invsts,
+                        lotnum,
+                        stoloc
+                   from ap_batch_c_inv_surtido
+                  where rowid in (@list_rowid:raw)
+                    and rownum < 2) aps
+             on iv.prt_client_id = aps.client_id
+            and iv.wh_id = aps.wh_id
+            and iv.prtnum = aps.prtnum
+            and iv.stoloc = aps.stoloc
+            and iv.invsts = aps.invsts
+            and iv.lodnum = aps.lodnum
+            and iv.lotnum = aps.lotnum
+          where iv.prmflg = 0
+            and iv.phyflg = 0
+            and iv.phdflg = 0
+            and iv.ctnflg = 0
+            and iv.ship_line_id is null
+            and iv.wrkref is null
+            and iv.subref is null
+          group by iv.prtnum] catch(@?)
+        |
+        if (@sto_untqty >= @g_surtqty)
+        {
+            [select lodnum,
+                    rowid id_inv,
+                    client_id,
+                    wh_id,
+                    prtnum,
+                    lotnum,
+                    invsts,
+                    stoloc,
+                    surtqty - nvl(adjqty, 0) surtqty,
+                    ot_id,
+                    adjflg
+               from ap_batch_c_inv_surtido
+              where rowid in (@list_rowid:raw)
+                and adjflg = 0]
+            |
+            save session variable
+             where name = 'adjqty'
+               and value = @surtqty
+            |
+            /*Obteniendo todo los id de pieza del lpn para evaluar ajuste*/
+            [select tb.*,
+                    rownum pos
+               from (select stoloc,
+                            lotnum,
+                            prtnum,
+                            dtlnum,
+                            prt_client_id,
+                            invsts,
+                            subnum,
+                            lodnum,
+                            ftpcod,
+                            orgcod,
+                            wh_id,
+                            inv_attr_flt1,
+                            inv_attr_flt2,
+                            inv_attr_flt3,
+                            untqty,
+                            untcas,
+                            untpak,
+                            revlvl,
+                            to_char(expire_dte, 'YYYYMMDDHH24MISS') expire_dte
+                       from inventory_view
+                      where prt_client_id = @client_id
+                        and wh_id = @wh_id
+                        and stoloc = @stoloc
+                        and lodnum = @lodnum
+                        and prtnum = @prtnum
+                        and invsts = @invsts
+                        and lotnum = @lotnum
+                        and prmflg = 0
+                        and phyflg = 0
+                        and phdflg = 0
+                        and ctnflg = 0
+                        and ship_line_id is null
+                        and wrkref is null
+                        and subref is null
+                      order by subnum,
+                            untqty asc) tb] catch(@?)
+            |
+            if (@? = 0)
+            {
+                get session variable
+                 where name = 'adjqty'
+                |
+                publish data
+                 where adjqty = to_number(@value)
+                |
+                if (@adjqty > 0)
+                {
+                    save session variable
+                     where name = 'adjqty'
+                       and value = to_number(@adjqty - @untqty)
+                    |
+                    [select case when (@adjqty < @untqty and @pos = 1) then @surtqty
+                                 when (@adjqty > @untqty) then @untqty
+                                 else @adjqty
+                            end adjqty
+                       from dual]
+                    |
+                    publish data
+                     where adjqty = @adjqty
+                       and untqty = @untqty
+                    |
+                    {
+                        move inventory
+                         WHERE srcdtl = @dtlnum
+                           AND actcod = 'INVDEL'
+                           AND wh_id = @wh_id
+                           AND dstloc = 'PERM-ADJ-LOC'
+                           AND untqty = @adjqty
+                           AND cstms_cnsgnmnt_id = ''
+                           AND movref = @sesnum
+                           AND reacod = 'SINGENINT'
+                           AND adj_ref1 = 'Surtido Materiales'
+                           AND adj_ref2 = nvl(@tipo, 'OT') || ' ' || @ot_id || @ref
+                           AND cnsg_flg = 0
+                           AND cmt = 'Surtido de Materiales ' || nvl(@tipo, 'OT') || ' ' || @ot_id || @ref;
+                    }
+                    |
+                    [update ap_batch_c_inv_surtido
+                        set adjqty = nvl(adjqty, 0) + @adjqty
+                      where client_id = @client_id
+                        and wh_id = @wh_id
+                        and rowid = @id_inv]
+                    |
+                    [update ap_batch_c_inv_surtido
+                        set adjflg = 1
+                      where client_id = @client_id
+                        and wh_id = @wh_id
+                        and rowid = @id_inv
+                        and surtqty = nvl(adjqty, 0)] catch(@?)
+                }
+            }
+            else
+            {
+                set return status
+                 where code = '99999'
+                   and message = 'No se encontraron lineas para ajustar'
+            }
+        }
+        else
+        {
+            set return status
+             where code = '99999'
+               and message = 'Hace falta inventario'
+        };
+    }
+    else
+    {
+        set return status
+         where code = '99999'
+           and message = 'No se encontraron lineas'
+    }
+    |
+    publish data
+     where msg = 'Completado'
+} catch(@?)
+{
+    publish data
+     where error = @!
+    |
+    rollback
+    |
+    send email
+     where from = 'jda@cainco.com'
+       and msg = 'Error: ' || @error
+       and subject = 'ERROR AL AJUSTAR INVENTARIO EN SURTIDO DE MATERIAL ' || nvl(@tipo, 'OT') || ' ' || @ot_id || @ref || ' - Cliente ' || @client_id
+       and to = 'ralvarez@cainco.com'
+       and host_name = '192.168.100.186'
+       and port = 25 catch(@?)
+    |
+    set return status
+     where code = '9999'
+       and message = @error
+}
