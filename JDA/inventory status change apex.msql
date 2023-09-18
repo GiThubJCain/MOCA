@@ -1,0 +1,220 @@
+publish data
+ where @%prtnum
+   and @%lotnum
+   and @%invsts
+   and @%client_id
+   and @%wh_id
+   and stoloc = decode(@stoloc, 'Todas Las Transferibles', null, null, 'N/A', @stoloc)
+   and @%to_invsts
+   and @%cmnt
+   and @%docnum
+   and @%apex_user
+   and @%reacod
+   and @%lodnum
+   and @%type
+   and @%dtlnums
+|
+if (@type = 'stoloc')
+{
+    [select il.lodnum,
+            il.stoloc,
+            il.wh_id,
+            invdtl.dtlnum,
+            sum(invdtl.untqty) pz
+       from invdtl
+      inner
+       join invsub isb
+         on isb.subnum = invdtl.subnum
+      inner
+       join invlod il
+         on il.lodnum = isb.lodnum
+        and il.stoloc not in (select trlr_id
+                                from trlr
+                               where trlr_cod = 'SHIP'
+                                 and stoloc_wh_id = il.wh_id)
+       left
+       join locmst lm
+         on lm.stoloc = il.stoloc
+        and lm.wh_id = il.wh_id
+       left
+       join aremst a
+         on lm.arecod = a.arecod
+        and lm.wh_id = a.wh_id
+      where lm.arecod is not null
+        and lm.arecod not in ('JCSTGREC','DSPCH', 'EXPR', 'CIOSTG', 'CIOVRP', 'CIKITS', 'JCEMP', 'JCPROD', 'CILPROD', 'JCPTADES', 'CISTGDES', 'CIPEDEMP', 'CISTGDES', 'LSPEDEMP', 'LSSOKITS', 'LSPTA', 'OVRP', 'LSSTGDES', 'LSSOOVRP', 'LSSTGDESFR', 'LSPTAFR', 'LSSOPTA', 'WRKS', 'LSSOLPROD', 'LSPROD', 'OVRPFR', 'LSSOOSTG')
+        and invdtl.prtnum = @prtnum
+        and invdtl.lotnum = @lotnum
+        and invdtl.prt_client_id = @client_id
+        and invdtl.invsts = @invsts
+        and invdtl.ship_line_id is null
+        and invdtl.wrkref is null
+        and invdtl.wrkref_dtl is null
+        and il.prmflg = 0
+        and isb.phyflg = 0
+        and il.stoloc = nvl(@stoloc, il.stoloc)
+        and nvl((select sum(pckqty) - sum(appqty)
+                   from pckwrk_view pw
+                  where pw.srcloc = il.stoloc
+                    and pw.client_id = invdtl.prt_client_id
+                    and pw.wh_id = il.wh_id
+                    and pw.prtnum = invdtl.prtnum
+                    and pw.wrktyp = 'P'
+                    and pw.appqty != pw.pckqty
+                    and pw.pcksts != 'C'), 0) = 0
+        and nvl(a.logic_flg, 0) = 0
+      group by il.lodnum,
+            il.stoloc,
+            il.wh_id,
+            invdtl.dtlnum] catch(@?)
+}
+else if (@type = 'lodnum')
+{
+    [select il.lodnum,
+            il.stoloc,
+            il.wh_id,
+            invdtl.dtlnum,
+            sum(invdtl.untqty) pz
+       from invdtl
+      inner
+       join invsub isb
+         on isb.subnum = invdtl.subnum
+      inner
+       join invlod il
+         on il.lodnum = isb.lodnum
+        and il.stoloc not in (select trlr_id
+                                from trlr
+                               where trlr_cod = 'SHIP'
+                                 and stoloc_wh_id = il.wh_id)
+       left
+       join locmst lm
+         on lm.stoloc = il.stoloc
+        and lm.wh_id = il.wh_id
+       left
+       join aremst a
+         on lm.arecod = a.arecod
+        and lm.wh_id = a.wh_id
+      where lm.arecod is not null
+        and lm.arecod not in ('JCSTGREC','DSPCH', 'EXPR', 'CIOSTG', 'CIOVRP', 'CIKITS', 'JCEMP', 'JCPROD', 'CILPROD', 'JCPTADES', 'CISTGDES', 'CIPEDEMP', 'CISTGDES', 'LSPEDEMP', 'LSSOKITS', 'LSPTA', 'OVRP', 'LSSTGDES', 'LSSOOVRP', 'LSSTGDESFR', 'LSPTAFR', 'LSSOPTA', 'WRKS', 'LSSOLPROD', 'LSPROD', 'OVRPFR', 'LSSOOSTG')
+        and invdtl.prtnum = @prtnum
+        and invdtl.lotnum = @lotnum
+        and invdtl.prt_client_id = @client_id
+        and invdtl.invsts = @invsts
+        and invdtl.ship_line_id is null
+        and invdtl.wrkref is null
+        and invdtl.wrkref_dtl is null
+        and il.prmflg = 0
+        and isb.phyflg = 0
+        and il.lodnum = @lodnum
+        and nvl((select sum(pckqty) - sum(appqty)
+                   from pckwrk_view pw
+                  where pw.srcloc = il.stoloc
+                    and pw.client_id = invdtl.prt_client_id
+                    and pw.wh_id = il.wh_id
+                    and pw.prtnum = invdtl.prtnum
+                    and pw.wrktyp = 'P'
+                    and pw.appqty != pw.pckqty
+                    and pw.pcksts != 'C'), 0) = 0
+        and nvl(a.logic_flg, 0) = 0
+      group by il.lodnum,
+            il.stoloc,
+            il.wh_id,
+            invdtl.dtlnum] catch(@?)
+}
+else if (@type = 'stoloc_masivo')
+{
+    /*Comando mejorado 6-OCT-2022 RALVAREZ*/
+    if (@dtlnums)
+    {
+        convert list
+         where string = @dtlnums
+           and separator = trim(',')
+           and type = trim('S')
+        |
+        publish data
+         where dtlnums = @retstr
+    }
+    |
+    [select *
+       from (select l.stoloc,
+                    case when nvl(d.ship_line_id, d.wrkref) is null
+                     and nvl((select sum(pw.dtl_pckqty) - sum(pw.dtl_appqty)
+                                from pckwrk_view pw
+                               where pw.srcloc = l.stoloc
+                                 and pw.prtnum = d.prtnum
+                                 and pw.wrktyp = 'P'), 0) = 0
+                     and (select count('x') cnt
+                            from loc_typ
+                           where wh_id = l.wh_id
+                             and loc_typ_id = lm.loc_typ_id
+                             and fwiflg = 1
+                             and (rcv_stgflg = 1 or loc_typ = 'PND' or stoare_flg = 1)) > 0 then 'Transferible'
+                         else 'Intransferible'
+                    end estado,
+                    d.dtlnum,
+                    sum(d.untqty) pz,
+                    l.wh_id,
+                    l.lodnum
+               from invdtl d
+              inner
+               join invsub s
+                 on d.prt_client_id = @client_id
+                and d.subnum = s.subnum
+              inner
+               join invlod l
+                 on l.stoloc not like '%PERM%'
+                and s.lodnum = l.lodnum
+                and l.stoloc not in (select trlr_id
+                                       from trlr
+                                      where (trlr_stat = 'D' or trlr_stat = 'DELV'))
+                and l.wh_id = @wh_id
+               join locmst lm
+                 on lm.stoloc = l.stoloc
+                and lm.wh_id = l.wh_id
+               left
+               join aremst a
+                 on lm.arecod = a.arecod
+                and lm.wh_id = a.wh_id
+               left
+               join rcvlin rl
+                 on rl.rcvkey = d.rcvkey
+                and rl.client_id = d.prt_client_id
+              where lm.arecod is not null
+                and d.prt_client_id = @client_id
+                and nvl(l.prmflg, 0) = 0
+                and nvl(a.logic_flg, 0) = 0
+                and d.invsts != @to_invsts
+                and d.invsts = @invsts
+                and d.prtnum = @prtnum
+                and d.lotnum = @lotnum
+                and d.ship_line_id is null
+                and d.wrkref is null
+                and d.wrkref_dtl is null
+                and l.stoloc = @stoloc
+                and d.dtlnum in (@dtlnums:raw)
+              group by l.stoloc,
+                    d.dtlnum,
+                    lm.loc_typ_id,
+                    d.prtnum,
+                    d.ship_line_id,
+                    d.wrkref,
+                    l.wh_id,
+                    l.lodnum)
+      where estado = 'Transferible'] catch(@?)
+}
+|
+if (@? = 0 and @reacod and @dtlnum and @to_invsts)
+{
+    process bulk inventory status change
+     where dtlnum_list = @dtlnum
+       and to_invsts = @to_invsts
+       and prc_reacod = @reacod
+       and mode = 'GUI'
+       and wh_id = @wh_id
+       and prt_client_id = @client_id
+       and cmnt = @cmnt
+       and usr_id = @apex_user
+       and uc_docnum = @docnum catch(@?)
+    |
+    publish data
+     where msj = 'OK';
+}
