@@ -1,0 +1,281 @@
+publish data
+ where ot_id = @ot_id
+   and wh_id = nvl(@@wh_id, @wh_id)
+   and cliente = @cliente
+   and unidades = @unidades
+   and copias = @copias
+   and f_elab = @f_elab
+   and prtque = @prtque
+   and ingles = @ingles
+   and bilingue = @bilingue
+   and prtnum12 = @prtnum12
+   and lotnum12 = @lotnum12
+   and prtnum = @prtnum
+   and lotnum = @lotnum
+   and combo = @combo
+   and client_id = @cliente
+|
+{
+    [select ceil(wkohdr.wkoqty / prtmst.untcas) copias,
+            ceil(wkohdr.wkoqty / prtmst.untcas) * 2 gsk,
+            trunc(wkohdr.wkoqty / prtmst.untcas) complte,
+            prtmst.untcas unidades,
+            wkohdr.wkoqty,
+            case when mod(wkohdr.wkoqty, prtmst.untcas) <> 0 then mod(wkohdr.wkoqty, prtmst.untcas)
+            end parcial,
+            wkohdr.lotnum,
+            wkohdr.prtnum
+       from wkohdr,
+            vc_otmst,
+            prtmst
+      where wkohdr.wkonum = vc_otmst.ordnum
+        and wkohdr.client_id = vc_otmst.client_id
+        and wkohdr.wh_id = vc_otmst.wh_id
+        and wkohdr.prtnum = prtmst.prtnum
+        and wkohdr.wh_id = prtmst.wh_id_tmpl
+        and wkohdr.client_id = prtmst.prt_client_id
+        and wkohdr.lotnum = @lotnum
+        and vc_otmst.ot_id = @ot_id
+        and vc_otmst.client_id = @client_id
+        and vc_otmst.wh_id = @wh_id] catch(@?)
+    |
+    if (@? = 0)
+    {
+        [select 'x'
+           from prtmst
+          where prtnum = @prtnum
+            and prt_client_id = @client_id
+            and wh_id_tmpl = @wh_id
+            and ftpcod != 'DEFAULT'
+            and exists(select 'x'
+                         from prtftp
+                        where prtftp.prtnum = prtmst.prtnum
+                          and prtftp.prt_client_id = prtmst.prt_client_id
+                          and prtftp.wh_id = prtmst.wh_id_tmpl
+                          and prtftp.ftpcod = prtmst.ftpcod)
+            and rownum < 2] catch(@?)
+        |
+        if (@? != 0)
+        {
+            set return status
+             where code = '9999'
+               AND message = 'EL ITEM ' || @prtnum || ' NO TINE HUELLA CONFIGURADA'
+        }
+        |
+        publish data
+         where printpar = @copias - @complte
+        |
+        [select wkohdr.prtnum,
+                prtdsc.lngdsc,
+                wkohdr.lotnum,
+                prtlot.expdte,
+                vc_otmst.ot_id,
+                wkohdr.wkonum
+           from wkohdr
+           join prtlot
+             on wkohdr.prtnum = prtlot. prtnum
+            and wkohdr.lotnum = prtlot. lotnum
+            and wkohdr.client_id = prtlot.prt_client_id
+           join prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.locale_id = nvl(@@locale_id, 'MEXICAN_SPANISH')
+            and prtdsc.colval = wkohdr. prtnum || '|' || wkohdr. client_id || '|' || wkohdr.wh_id
+           join vc_otmst
+             on wkohdr.wkonum = vc_otmst.ordnum
+            and wkohdr.wh_id = vc_otmst.wh_id
+            and wkohdr.client_id = vc_otmst.client_id
+          where vc_otmst.ot_id = @ot_id
+            and vc_otmst.wh_id = NVL(@@wh_id, @wh_id)
+            and vc_otmst.client_id = @client_id] catch(@?)
+        |
+        if (@? = 0)
+        {
+            if (@prtque = 'farzebra1')
+            {
+                generate label
+                 where label_name = 'etiaconresutwo'
+                   and locale_id = 'US_ENGLISH'
+                |
+                print file
+                 where filename = @outfile_name
+                   and copies = 1
+                   and printer = @prtque
+                   and wh_id = @wh_id
+            }
+            else if (@prtque = 'farzebra')
+            {
+                generate label
+                 where label_name = 'etiaconresuthree'
+                   and locale_id = 'US_ENGLISH'
+                |
+                print file
+                 where filename = @outfile_name
+                   and copies = 1
+                   and printer = @prtque
+                   and wh_id = @wh_id
+            }
+        }
+        |
+        publish data
+         where complte = @complte
+        |
+        if (@complte > 0)
+        {
+            if (@ingles = '1')
+            {
+                [select upper(to_char(to_date(@expdte), 'month', 'nls_date_language=english')) mes,
+                        upper(to_char(to_date(@f_elab), 'month', 'nls_date_language=english')) mis
+                   from dual]
+            }
+            else if (@bilingue = '1')
+            {
+                [select to_char(to_date(@expdte), 'MON', ' nls_date_language = english ') mes,
+                        to_char(to_date(@expdte), 'MON', ' nls_date_language = spanish ') mes1,
+                        to_char(to_date(@f_elab), 'MON', ' nls_date_language = english ') mis,
+                        to_char(to_date(@f_elab), 'MON', ' nls_date_language = spanish ') mis1
+                   from dual]
+                |
+                publish data
+                 where mes = @mes || '/' || @mes1
+                   and mis = @mis || '/' || @mis1
+            }
+            else
+            {
+                [select upper(to_char(to_date(@expdte), 'month', 'nls_date_language=spanish')) mes,
+                        upper(to_char(to_date(@f_elab), 'month', 'nls_date_language=spanish')) mis
+                   from dual]
+            }
+            |
+            if (@prtque = 'farzebra1')
+            {
+                generate label
+                 where label_name = 'etiaconcomptwo'
+                   and locale_id = 'US_ENGLISH'
+                |
+                {
+                    do loop
+                     where count = @complte
+                    |
+                    print file
+                     where filename = @outfile_name
+                       and copies = 1
+                       and printer = @prtque
+                       and wh_id = @wh_id
+                }
+            }
+            else if (@prtque = 'farzebra')
+            {
+                generate label
+                 where label_name = 'etiaconcompthree'
+                   and locale_id = 'US_ENGLISH'
+                |
+                {
+                    do loop
+                     where count = @complte
+                    |
+                    print file
+                     where filename = @outfile_name
+                       and copies = 1
+                       and printer = @prtque
+                       and wh_id = @wh_id
+                }
+            }
+        };
+        [select case when mod(wkohdr.wkoqty, prtmst.untcas) <> 0 then mod(wkohdr.wkoqty, prtmst.untcas)
+                end parcial
+           from wkohdr,
+                vc_otmst,
+                prtmst
+          where wkohdr.wkonum = vc_otmst.ordnum
+            and wkohdr.client_id = vc_otmst.client_id
+            and wkohdr.wh_id = vc_otmst.wh_id
+            and wkohdr.prtnum = prtmst.prtnum
+            and wkohdr.wh_id = prtmst.wh_id_tmpl
+            and wkohdr.client_id = prtmst.prt_client_id
+            and vc_otmst.ot_id = @ot_id
+            and vc_otmst.client_id = @client_id
+            and vc_otmst.wh_id = @wh_id] catch(@?)
+        |
+        if (@parcial > 0)
+        {
+            [select wkohdr.prtnum,
+                    prtdsc.lngdsc,
+                    wkohdr.lotnum,
+                    prtlot.expdte,
+                    vc_otmst.ot_id,
+                    wkohdr.wkonum
+               from wkohdr
+               join prtlot
+                 on wkohdr.prtnum = prtlot. prtnum
+                and wkohdr.lotnum = prtlot. lotnum
+                and wkohdr.client_id = prtlot.prt_client_id
+               join prtdsc
+                 on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+                and prtdsc.locale_id = nvl(@@locale_id, 'MEXICAN_SPANISH')
+                and prtdsc.colval = wkohdr. prtnum || '|' || wkohdr. client_id || '|' || wkohdr.wh_id
+               join vc_otmst
+                 on wkohdr.wkonum = vc_otmst.ordnum
+                and wkohdr.wh_id = vc_otmst.wh_id
+                and wkohdr.client_id = vc_otmst.client_id
+              where vc_otmst.ot_id = @ot_id
+                and vc_otmst.wh_id = NVL(@@wh_id, @wh_id)
+                and vc_otmst.client_id = @client_id]
+            |
+            if (@ingles = '1')
+            {
+                [select upper(to_char(to_date(@expdte), 'month', 'nls_date_language=english')) mes,
+                        upper(to_char(to_date(@f_elab), 'month', 'nls_date_language=english')) mis
+                   from dual]
+            }
+            else if (@bilingue = '1')
+            {
+                [select to_char(to_date(@expdte), 'MON', ' nls_date_language = english ') mes,
+                        to_char(to_date(@expdte), 'MON', ' nls_date_language = spanish ') mes1,
+                        to_char(to_date(@f_elab), 'MON', ' nls_date_language = english ') mis,
+                        to_char(to_date(@f_elab), 'MON', ' nls_date_language = spanish ') mis1
+                   from dual]
+                |
+                publish data
+                 where mes = @mes || '/' || @mes1
+                   and mis = @mis || '/' || @mis1
+            }
+            else
+            {
+                [select upper(to_char(to_date(@expdte), 'month', 'nls_date_language=spanish')) mes,
+                        upper(to_char(to_date(@f_elab), 'month', 'nls_date_language=spanish')) mis
+                   from dual]
+            }
+            |
+            if (@prtque = 'farzebra1')
+            {
+                generate label
+                 where label_name = 'etiaparcialtwo'
+                   and locale_id = 'US_ENGLISH'
+                |
+                print file
+                 where filename = @outfile_name
+                   and copies = 1
+                   and printer = @prtque
+                   and wh_id = @wh_id
+            }
+            else if (@prtque = 'farzebra')
+            {
+                generate label
+                 where label_name = 'etiaparcialthree'
+                   and locale_id = 'US_ENGLISH'
+                |
+                print file
+                 where filename = @outfile_name
+                   and copies = 1
+                   and printer = @prtque
+                   and wh_id = @wh_id
+            }
+        }
+    }
+    else
+    {
+        set return status
+         where code = '9999'
+           and error_message = 'DATOS NO VALIDOS'
+    }
+}
