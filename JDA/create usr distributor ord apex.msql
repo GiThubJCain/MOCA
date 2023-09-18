@@ -1,0 +1,281 @@
+/*Last modified by RALVAREZ March 23, 2022
+   -Correction of stcust and btcust
+   Last modified by EGARIOS May 14, 2022
+   -Correction of rulename
+   Last modified by RALVAREZ May 19, 2022
+   -Correction of mpbr*/
+publish data
+ where client_id = @client_id
+   and wh_id = @wh_id
+   and ordnum = @ordnum
+   and app_user = @app_user
+|
+try
+{
+    [select ordnum,
+            cstnum,
+            stcust,
+            ordtyp,
+            incoterm,
+            currency,
+            client_id,
+            comentario,
+            payterm,
+            invoice_typ,
+            sub_invoice_typ,
+            safe_flg,
+            requireddte
+       from ap_uebv_ord
+      where ordnum = @ordnum
+        and client_id = @client_id] catch(@?)
+    |
+    create order
+     WHERE client_id = @client_id
+       AND ordnum = @ordnum
+       AND wh_id = @wh_id
+       AND stcust = @stcust
+       and btcust = @cstnum
+       and rtcust = @stcust
+       AND ordtyp = @ordtyp
+       and invoice = @cponum
+       AND cpodte = null
+       and cponum = null
+       and crncy_code = @currency
+       AND carflg = '1'
+       AND wave_flg = '1'
+       AND crncy_code = @currency
+       and requir_tms_flg = nvl(@requir_tms_flg, '0')
+       AND filename = 'PORTAL-DISTRIBUIDOR-' || @app_user
+       and srv_type = @incoterm
+       and paytrm = @payterm
+    |
+    {
+        [update uc_trace_shp
+            set payterm = @payterm,
+                duedte = @requireddte,
+                sub_invoice_typ = @sub_invoice_typ,
+                invoice_typ = @invoice_typ,
+                insurance_flg = @safe_flg,
+                ins_user_id = @app_user
+          where ordnum = @ordnum
+            and client_id = @client_id
+            and wh_id = @wh_id] catch(@?);
+        if (@comentario)
+        {
+            [select substr(@comentario, 1, 55) coment1,
+                    substr(@comentario, 56, 56) coment2,
+                    substr(@comentario, 112, 56) coment3,
+                    substr(@comentario, 168, 56) coment4,
+                    substr(@comentario, 224, 56) coment5
+               from dual]
+            |
+            publish data
+             where coment = @coment1 &
+            publish data
+             where coment = @coment2 &
+            publish data
+             where coment = @coment3 &
+            publish data
+             where coment = @coment4 &
+            publish data
+             where coment = @coment5
+            |
+            if (@coment)
+            {
+                [select LPAD(NVL(MAX(notlin), 0) + 1, 4, 0) notlin
+                   from ord_note
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = @wh_id]
+                |
+                create order note
+                 where ordnum = @ordnum
+                   and nottyp = 'NOTACLIENTE'
+                   and notlin = @notlin
+                   and client_id = @client_id
+                   and wh_id = @wh_id
+                   and nottxt = @coment
+            }
+        };
+    };
+    [select l.client_id,
+            l.ordnum,
+            l.prtnum,
+            l.lotnum,
+            l.invsts_prg,
+            l.ordqty,
+            l.price,
+            nvl(l.mpbr, 0) mpbr,
+            lpad(rownum, 4, '0') ordlin,
+            o.currency
+       from ap_uebv_ord o
+      inner
+       join ap_uebv_ordline l
+         on l.client_id = o.client_id
+        and o.ordnum = l.ordnum
+      where o.ordnum = @ordnum
+        and o.client_id = @client_id
+        and nvl(to_number(l.ordqty), 0) > 0] catch(@?)
+    |
+    generate next number
+     where numcod = 'rule_nam'
+    |
+    publish data
+     where rule_nam = @nxtnum
+    |
+    [select case when (@lotnum is not null and @mpbr is not null) then 'AND'
+                 else ''
+            end grpopr1
+       from dual]
+    |
+    if (@rule_nam)
+    {
+        [SELECT 'x'
+           FROM alloc_rule_hdr
+          where rule_nam = @rule_nam
+            and wh_id = @wh_id] catch(@?)
+        |
+        if (@? != 0)
+        {
+            create allocation rule header
+             WHERE rule_nam = @rule_nam
+               AND wh_id = @wh_id
+               AND temp_flg = '1'
+               AND lngdsc = @lotnum
+            |
+            if (@lotnum)
+            {
+                create allocation rule detail
+                 WHERE rule_nam = @rule_nam
+                   AND wh_id = @wh_id
+                   AND field_name = 'lotnum'
+                   AND value = @lotnum
+                   AND operator = '='
+            }
+            |
+            if (@mpbr)
+            {
+                create allocation rule detail
+                 WHERE rule_nam = @rule_nam
+                   AND wh_id = @wh_id
+                   AND field_name = 'inv_attr_int1'
+                   AND value = @mpbr
+                   AND operator = '='
+                   and grpopr = @grpopr1
+            }
+        }
+    }
+    |
+    create order line
+     WHERE client_id = @client_id
+       AND ordnum = @ordnum
+       AND ordlin = @ordlin
+       AND ordsln = @ordlin
+       AND wh_id = @wh_id
+       AND prt_client_id = @client_id
+       AND prtnum = @prtnum
+       AND rsvpri = '5'
+       AND ordqty = @ordqty
+       AND parflg = '0'
+       AND ovaflg = '0'
+       AND ovpflg = '0'
+       AND rpqflg = '0'
+       AND splflg = '1'
+       AND stdflg = '0'
+       AND bckflg = '0'
+       AND prcpri = '5'
+       AND sddflg = '0'
+       AND xdkflg = '0'
+       AND edtflg = '0'
+       AND frsflg = '0'
+       AND invsts_prg = @invsts_prg
+       AND non_alc_flg = '0'
+       AND crncy_name = @currency
+       AND crncy_code = @currency
+       AND sedflg = '0'
+       AND aut_gen_flg = '0'
+       AND rule_nam = @rule_nam
+       AND sto_alc_flg = '0'
+       AND allow_ovrshpflg = '1'
+       and carcod = 'JCAIN'
+       and srvlvl = '1'
+       and unt_price = @price
+    |
+    process usr order instruction lines
+     where wh_id = @wh_id
+       and prt_client_id = @client_id
+       and ordnum = @ordnum
+       and prtnum = @prtnum
+       and lotnum = @lotnum
+       and ordqty = @ordqty
+       and ordlin = @ordlin
+       and ordsln = @ordlin
+       and proc_area = @proc_area
+       and ins_user_id = @app_user catch(@?);
+
+    /*[select adrnam cli_adrnam
+       from client
+       left
+       join adrmst
+       on adrmst.adr_id = client.adr_id
+       where client.client_id = @client_id] catch(@?)
+       |
+       [select adrnam ord_adrnam,
+       cst.cstnum
+       from ap_uebv_ord
+       left
+       join cstmst cst
+       on ap_uebv_ord.cstnum = cst.cstnum
+       and ap_uebv_ord.client_id = cst.client_id
+       left
+       join adrmst adr
+       on (adr.adr_id = cst.adr_id)
+       and adr.adrtyp = 'CST'
+       where ap_uebv_ord.ordnum = @ordnum
+       and ap_uebv_ord.client_id = @client_id
+       and rownum < 2] catch(@?)
+       |
+       {
+       commit;
+       }
+       |
+       generate moca report
+       WHERE format_typ = 'pdf'
+       AND locale_id = 'US_ENGLISH'
+       AND wh_id = @wh_id
+       AND lang_flg = '0'
+       AND distri_flg = '0'
+       AND emsjcain_flg = 1
+       AND cstnum = @cstnum
+       AND num_copies = null
+       AND ordnum = @ordnum
+       AND gen_usr_id = 'UREPORTE'
+       AND rpt_id = 'Usr-CreacionOrdenDistribuidor'
+       AND dest = null
+       AND logemsevt = '1'
+       AND client_id = @client_id
+       AND adrnam = @cli_adrnam || ' - ' || @ord_adrnam
+       AND keep_days = 1 catch(@?) */
+    commit;
+    [insert
+       into uc_acuse_inter_auto(wh_id, client_id, ordnum, type)
+     values (@wh_id, @client_id, @ordnum, 'CREATE_ORDER_RPT')] catch(@?);
+    Publish data
+     where msj = 'OK'
+} catch(@?)
+{
+    publish data
+     where error = @!
+    |
+    rollback
+    |
+    [insert
+       into uc_prueba_ra(wh_id, client_id, usr_id, campo1, campo2, campo5)
+     values (@wh_id, @client_id, @app_user, 'ERROR-CREATE-ORD-DISTR', @ordnum, @error)] catch(@?)
+    |
+    send email
+     where from = 'jda@cainco.com'
+       and msg = 'Error inseperado: ' || @error
+       and subject = 'Error al crear pedido portal distribuidor, pedido' || @ordnum || ' - Cliente ' || @client_id
+       and to = 'ralvarez@cainco.com;rceballos@cainco.com';
+}
