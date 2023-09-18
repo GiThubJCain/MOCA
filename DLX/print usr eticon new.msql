@@ -16,12 +16,12 @@ publish data
    and client_id = @cliente
 |
 {
-    [select ceil(wkohdr.wkoqty / prtmst.untcas) copias,
-            ceil(wkohdr.wkoqty / prtmst.untcas) * 2 gsk,
-            trunc(wkohdr.wkoqty / prtmst.untcas) complte,
+    [select ceil(vc_otmst.untqty / prtmst.untcas) copias,
+            ceil(vc_otmst.untqty / prtmst.untcas) * 2 gsk,
+            trunc(vc_otmst.untqty / prtmst.untcas) complte,
             prtmst.untcas unidades,
-            wkohdr.wkoqty,
-            case when mod(wkohdr.wkoqty, prtmst.untcas) <> 0 then mod(wkohdr.wkoqty, prtmst.untcas)
+            vc_otmst.untqty wkoqty,
+            case when mod(vc_otmst.untqty, prtmst.untcas) <> 0 then mod(vc_otmst.untqty, prtmst.untcas)
             end parcial,
             wkohdr.lotnum,
             wkohdr.prtnum
@@ -181,7 +181,7 @@ publish data
                 }
             }
         };
-        [select case when mod(wkohdr.wkoqty, prtmst.untcas) <> 0 then mod(wkohdr.wkoqty, prtmst.untcas)
+        [select case when mod(vc_otmst.untqty, prtmst.untcas) <> 0 then mod(vc_otmst.untqty, prtmst.untcas)
                 end parcial
            from wkohdr,
                 vc_otmst,
