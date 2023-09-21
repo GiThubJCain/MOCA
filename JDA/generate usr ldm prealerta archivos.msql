@@ -1,0 +1,590 @@
+generate usr ldm prealerta validations catch(@?);
+[select *
+   from (SELECT wh_id,
+                client_id,
+                ref_id,
+                type_documento,
+                type,
+                status,
+                process_flg,
+                instructivo_flg,
+                packinglist_flg,
+                recibo_entrega_flg,
+                caricom_flg,
+                factura_flg,
+                acuse_flg,
+                prioridad,
+                rowid,
+                ins_dt
+           from uc_ldm_index
+          WHERE process_flg = '0'
+            and status = 'SIN PROCESAR'
+            and nvl(cancel_flg, 0) = 0
+          order by prioridad asc)
+  where rownum < 8] catch(@?)
+|
+if (@ref_id and @? = 0)
+{
+    [select count(ref_id) validacion
+       from uc_ldm_index
+      where status = 'EN PROCESO']
+    |
+    if (@validacion < 10)
+    {
+        [update uc_ldm_index
+            set status = 'EN PROCESO'
+          WHERE wh_id = @wh_id
+            and client_id = @client_id
+            and ref_id = @ref_id
+            and type_documento = @type_documento
+            and type = @type
+            and rowid = @rowid]
+        |
+        remote('http://172.20.1.56:5550/service')
+        {
+            if (@type_documento = 'CAR_MOV')
+            {
+                publish data
+                 where comando_jcain = 'find /ldm_pdf_files/mov_transporte/ -name ' || @ref_id || ' -type d'
+                |
+                execute os command
+                 where command = @comando_jcain catch(@?)
+                |
+                if (@result is null)
+                {
+                    execute os command
+                     where command = 'mkdir -p /ldm_pdf_files/mov_transporte/' || @ref_id
+                }
+                else
+                {
+                    publish data
+                     where d = 'Carpeta encontrada'
+                }
+            }
+            else
+            {
+                publish data
+                 where comando_jcain = 'find /ldm_pdf_files/' || @client_id || '/ -name ' || @ref_id || ' -type d'
+                |
+                execute os command
+                 where command = @comando_jcain catch(@?)
+                |
+                if (@result is null)
+                {
+                    execute os command
+                     where command = 'mkdir -p /ldm_pdf_files/' || @client_id || '/' || @ref_id
+                }
+                else
+                {
+                    publish data
+                     where d = 'Carpeta encontrada'
+                }
+            }
+        };
+        if (@packinglist_flg = '1')
+        {
+            if (@client_id = 'C400' OR @client_id = 'C403')
+            {
+                generate MOCA report
+                 WHERE format_typ = 'pdf'
+                   and dest_typ = 'file'
+                   AND locale_id = 'US_ENGLISH'
+                   AND wh_id = @wh_id
+                   AND alert_flg = '1'
+                   AND ordnum = @ref_id
+                   AND gen_usr_id = 'UREPORTE'
+                   AND rpt_id = 'Usr-RepListaEmpaq_bodega_v3'
+                   AND dest = '/ldm_pdf_files/' || @client_id || '/' || @ref_id || '/' || '11-LISTA_EMPAQUE_' || @ref_id || '.pdf'
+                   AND logemsevt = 0
+                   AND client_id = @client_id
+                   AND keep_days = 0 catch(@?)
+                |
+                if (@? = 0)
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set ruta_servidor = @filename,
+                            process_flg = '1',
+                            process_dt = sysdate,
+                            status = 'PROCESADO'
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and packinglist_flg = '1'
+                        and rowid = @rowid]
+                }
+                else
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set msj_error = @?
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and packinglist_flg = '1'
+                        and rowid = @rowid]
+                }
+            }
+            else if (@client_id = 'C526')
+            {
+                generate MOCA report
+                 WHERE format_typ = 'pdf'
+                   and dest_typ = 'file'
+                   AND locale_id = 'US_ENGLISH'
+                   AND wh_id = @wh_id
+                   AND alert_flg = '1'
+                   AND ordnum = @ref_id
+                   AND gen_usr_id = 'UREPORTE'
+                   AND rpt_id = 'Usr-RptPackingListShp'
+                   AND dest = '/ldm_pdf_files/' || @client_id || '/' || @ref_id || '/' || '11-LISTA_EMPAQUE_' || @ref_id || '.pdf'
+                   AND logemsevt = 0
+                   and granel_flg = 0
+                   AND client_id = @client_id
+                   AND keep_days = 0 catch(@?)
+                |
+                if (@? = 0)
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set ruta_servidor = @filename,
+                            process_flg = '1',
+                            process_dt = sysdate,
+                            status = 'PROCESADO'
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and packinglist_flg = '1'
+                        and rowid = @rowid]
+                }
+                else
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set msj_error = @?
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and packinglist_flg = '1'
+                        and rowid = @rowid]
+                }
+            }
+            else
+            {
+                generate MOCA report
+                 WHERE format_typ = 'pdf'
+                   and dest_typ = 'file'
+                   AND locale_id = 'US_ENGLISH'
+                   AND wh_id = @wh_id
+                   AND alert_flg = '1'
+                   AND ordnum = @ref_id
+                   AND gen_usr_id = 'UREPORTE'
+                   AND rpt_id = 'Usr-RptPackingListShpFarma'
+                   AND dest = '/ldm_pdf_files/' || @client_id || '/' || @ref_id || '/' || '11-LISTA_EMPAQUE_' || @ref_id || '.pdf'
+                   AND logemsevt = 0
+                   and granel_flg = 0
+                   AND client_id = @client_id
+                   AND keep_days = 0 catch(@?)
+                |
+                if (@? = 0)
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set ruta_servidor = @filename,
+                            process_flg = '1',
+                            process_dt = sysdate,
+                            status = 'PROCESADO'
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and packinglist_flg = '1'
+                        and rowid = @rowid]
+                }
+                else
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set msj_error = @?
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and packinglist_flg = '1'
+                        and rowid = @rowid]
+                }
+            }
+        }
+        |
+        if (@acuse_flg = '1')
+        {
+            generate MOCA report
+             WHERE format_typ = 'pdf'
+               and dest_typ = 'file'
+               AND locale_id = 'US_ENGLISH'
+               AND wh_id = @wh_id
+               AND alert_flg = '1'
+               AND ordnum = @ref_id
+               AND gen_usr_id = 'UREPORTE'
+               AND rpt_id = 'Usr-ComparativoOrdenCorto'
+               AND dest = '/ldm_pdf_files/' || @client_id || '/' || @ref_id || '/' || '13-COMPARATIVO_' || @ref_id || '.pdf'
+               AND logemsevt = 0
+               AND client_id = @client_id
+               AND keep_days = 0 catch(@?)
+            |
+            if (@? = 0)
+            {
+                /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                [update uc_ldm_index
+                    set ruta_servidor = @filename,
+                        process_flg = '1',
+                        process_dt = sysdate,
+                        status = 'PROCESADO'
+                  WHERE wh_id = @wh_id
+                    and client_id = @client_id
+                    and ref_id = @ref_id
+                    and type_documento = @type_documento
+                    and status = 'EN PROCESO'
+                    and acuse_flg = '1'
+                    and rowid = @rowid]
+            }
+            else
+            {
+                /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                [update uc_ldm_index
+                    set msj_error = @?
+                  WHERE wh_id = @wh_id
+                    and client_id = @client_id
+                    and ref_id = @ref_id
+                    and type_documento = @type_documento
+                    and status = 'EN PROCESO'
+                    and acuse_flg = '1'
+                    and rowid = @rowid]
+            }
+        }
+        |
+        if (@instructivo_flg = '1')
+        {
+            generate MOCA report
+             WHERE format_typ = 'pdf'
+               and dest_typ = 'file'
+               AND locale_id = 'US_ENGLISH'
+               AND wh_id = @wh_id
+               AND alert_flg = '1'
+               AND ordnum1 = @ref_id
+               AND gen_usr_id = 'UREPORTE'
+               AND rpt_id = 'Usr-instr-desp'
+               AND dest = '/ldm_pdf_files/' || @client_id || '/' || @ref_id || '/' || '7-INSTRUCTIVO_' || @ref_id || '.pdf'
+               AND logemsevt = 0
+               AND client_id = @client_id
+               AND keep_days = 0 catch(@?)
+            |
+            if (@? = 0)
+            {
+                /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                [update uc_ldm_index
+                    set ruta_servidor = @filename,
+                        process_flg = '1',
+                        process_dt = sysdate,
+                        status = 'PROCESADO'
+                  WHERE wh_id = @wh_id
+                    and client_id = @client_id
+                    and ref_id = @ref_id
+                    and type_documento = @type_documento
+                    and status = 'EN PROCESO'
+                    and instructivo_flg = '1'
+                    and rowid = @rowid]
+            }
+            else
+            {
+                /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                [update uc_ldm_index
+                    set msj_error = @?
+                  WHERE wh_id = @wh_id
+                    and client_id = @client_id
+                    and ref_id = @ref_id
+                    and type_documento = @type_documento
+                    and status = 'EN PROCESO'
+                    and instructivo_flg = '1'
+                    and rowid = @rowid]
+            }
+        }
+        |
+        if (@factura_flg = '1')
+        {
+            if (@client_id = 'C100')
+            {
+                generate MOCA report
+                 WHERE format_typ = 'pdf'
+                   and dest_typ = 'file'
+                   AND locale_id = 'US_ENGLISH'
+                   AND wh_id = @wh_id
+                   AND alert_flg = '1'
+                   AND ordnum = @ref_id
+                   AND gen_usr_id = 'UREPORTE'
+                   AND rpt_id = 'Usr-Rep_Factura_Cliente_Group'
+                   AND dest = '/ldm_pdf_files/' || @client_id || '/' || @ref_id || '/' || '9-FACTURA_' || @ref_id || '.pdf'
+                   AND logemsevt = 0
+                   AND client_id = @client_id
+                   AND facturar_flg = '0'
+                   AND moneda = 'USD'
+                   AND original_flg = '0'
+                   AND bonificacion_flg = '0'
+                   AND keep_days = 0 catch(@?)
+                |
+                if (@? = 0)
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set ruta_servidor = @filename,
+                            process_flg = '1',
+                            process_dt = sysdate,
+                            status = 'PROCESADO'
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and factura_flg = '1'
+                        and rowid = @rowid]
+                }
+                else
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set msj_error = @?
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and factura_flg = '1'
+                        and rowid = @rowid]
+                }
+            }
+            else if (@client_id = 'C120')
+            {
+                generate MOCA report
+                 WHERE format_typ = 'pdf'
+                   and dest_typ = 'file'
+                   AND locale_id = 'US_ENGLISH'
+                   AND wh_id = @wh_id
+                   AND alert_flg = '1'
+                   AND ordnum = @ref_id
+                   AND gen_usr_id = 'UREPORTE'
+                   AND rpt_id = 'Usr-Rep_Factura_Cliente_Manual'
+                   AND dest = '/ldm_pdf_files/' || @client_id || '/' || @ref_id || '/' || '9-FACTURA_' || @ref_id || '.pdf'
+                   AND logemsevt = 0
+                   AND client_id = @client_id
+                   AND facturar_flg = '0'
+                   AND moneda = 'USD'
+                   AND original_flg = '0'
+                   AND bonificacion_flg = '0'
+                   AND keep_days = 0 catch(@?)
+                |
+                if (@? = 0)
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set ruta_servidor = @filename,
+                            process_flg = '1',
+                            process_dt = sysdate,
+                            status = 'PROCESADO'
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and factura_flg = '1'
+                        and rowid = @rowid]
+                }
+                else
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set msj_error = @?
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and factura_flg = '1'
+                        and rowid = @rowid]
+                }
+            }
+            else
+            {
+                generate MOCA report
+                 WHERE format_typ = 'pdf'
+                   and dest_typ = 'file'
+                   AND locale_id = 'US_ENGLISH'
+                   AND wh_id = @wh_id
+                   AND alert_flg = '1'
+                   AND ordnum = @ref_id
+                   AND gen_usr_id = 'UREPORTE'
+                   AND rpt_id = 'Usr_Rep_Fact_Cli_Manual_Simple'
+                   AND dest = '/ldm_pdf_files/' || @client_id || '/' || @ref_id || '/' || '9-FACTURA_' || @ref_id || '.pdf'
+                   AND logemsevt = 0
+                   AND client_id = @client_id
+                   AND facturar_flg = '0'
+                   AND moneda = 'USD'
+                   AND original_flg = '0'
+                   AND bonificacion_flg = '0'
+                   AND emsjcain_flg = '0'
+                   AND firma_flg = 1
+                   AND keep_days = 0 catch(@?)
+                |
+                if (@? = 0)
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set ruta_servidor = @filename,
+                            process_flg = '1',
+                            process_dt = sysdate,
+                            status = 'PROCESADO'
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and factura_flg = '1'
+                        and rowid = @rowid]
+                }
+                else
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set msj_error = @?
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and factura_flg = '1'
+                        and rowid = @rowid]
+                }
+            }
+        }
+        |
+        if (@caricom_flg = '1')
+        {
+            generate MOCA report
+             WHERE format_typ = 'pdf'
+               and dest_typ = 'file'
+               AND locale_id = 'US_ENGLISH'
+               AND wh_id = @wh_id
+               AND alert_flg = '1'
+               AND ordnum = @ref_id
+               AND gen_usr_id = 'UREPORTE'
+               AND rpt_id = 'Usr-RepCaricomCIE'
+               AND dest = '/ldm_pdf_files/' || @client_id || '/' || @ref_id || '/' || '8-CARICOM_' || @ref_id || '.pdf'
+               AND logemsevt = 0
+               AND client_id = @client_id
+               AND firma_flg = 1
+               AND keep_days = 0 catch(@?)
+            |
+            if (@? = 0)
+            {
+                /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                [update uc_ldm_index
+                    set ruta_servidor = @filename,
+                        process_flg = '1',
+                        process_dt = sysdate,
+                        status = 'PROCESADO'
+                  WHERE wh_id = @wh_id
+                    and client_id = @client_id
+                    and ref_id = @ref_id
+                    and type_documento = @type_documento
+                    and status = 'EN PROCESO'
+                    and caricom_flg = '1'
+                    and rowid = @rowid]
+            }
+            ELSE
+            {
+                /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                [update uc_ldm_index
+                    set msj_error = @?
+                  WHERE wh_id = @wh_id
+                    and client_id = @client_id
+                    and ref_id = @ref_id
+                    and type_documento = @type_documento
+                    and status = 'EN PROCESO'
+                    and caricom_flg = '1'
+                    and rowid = @rowid]
+            }
+        }
+        |
+        if (@recibo_entrega_flg = '1')
+        {
+            if (1 = 1)
+            {
+                generate MOCA report
+                 WHERE format_typ = 'pdf'
+                   and dest_typ = 'file'
+                   AND locale_id = 'US_ENGLISH'
+                   AND wh_id = @wh_id
+                   AND alert_flg = '1'
+                   AND gen_usr_id = 'UREPORTE'
+                   AND rpt_id = 'Usr-SalidaContenedorDigital'
+                   AND dest = '/ldm_pdf_files/mov_transporte' || '/' || @ref_id || '/' || '6-RECIBO_ENTREGA_DIGITAL_' || @ref_id || '.pdf'
+                   AND logemsevt = 0
+                   AND car_move_id = @ref_id
+                   AND keep_days = 0 catch(@?)
+                |
+                if (@? = 0)
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set ruta_servidor = @filename,
+                            process_flg = '1',
+                            process_dt = sysdate,
+                            status = 'PROCESADO'
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and recibo_entrega_flg = '1'
+                        and rowid = @rowid]
+                }
+                ELSE
+                {
+                    /*COLOCAR VALIDACION SI ESCRIBIO ARCHIVOS*/
+                    [update uc_ldm_index
+                        set msj_error = @?
+                      WHERE wh_id = @wh_id
+                        and client_id = @client_id
+                        and ref_id = @ref_id
+                        and type_documento = @type_documento
+                        and status = 'EN PROCESO'
+                        and recibo_entrega_flg = '1'
+                        and rowid = @rowid]
+                }
+            }
+        }
+    }
+    else
+    {
+        send email
+         where subject = 'ERROR DE LDM GENERACION- ' || @validacion || ' Pendientes por procesar'
+           and from = 'arios@cainco.com'
+           and host_name = '192.168.100.186'
+           and port = 25
+           and to = 'arios@cainco.com;ralvarez@cainco.com'
+           and message = 'REVISAR JOB: ' || @validacion
+    }
+}
+else
+{
+    publish data
+     where mensaje = ' NADA QUE PROCESAR '
+}
