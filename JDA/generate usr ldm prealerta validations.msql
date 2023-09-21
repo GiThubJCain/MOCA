@@ -1,0 +1,100 @@
+/*Validando proceso pendiente para algun archivo*/
+[select rowid,
+        wh_id,
+        client_id,
+        ref_id,
+        type_documento,
+        recibo_entrega_flg,
+        prioridad,
+        ruta_servidor,
+        process_flg,
+        process_dt,
+        ins_dt,
+        process_ldm_flg,
+        process_ldm_dt
+   from uc_ldm_index
+  where status = 'EN VALIDACION'
+    and ins_user_id = 'NOUSER'
+    and nvl(cancel_flg, 0) = 0
+  order by prioridad]
+|
+[select trlr_id
+   from car_move
+  where car_move_id = @ref_id
+    and rownum < 2] catch(@?)
+|
+if (@recibo_entrega_flg = 1)
+{
+    [select 'OK' requerido
+       from ap_documents ad
+      where ad.doc_colval = @trlr_id
+        and ad.doc_type = 'SIGNATURE'
+        and rownum < 2] catch(@?)
+    |
+    publish data
+     where requerido = @requerido
+}
+|
+if (@requerido = 'OK')
+{
+    [update uc_ldm_index
+        set status = 'SIN PROCESAR'
+      where rowid = @rowid]
+    |
+    publish data
+     where requerido = @requerido
+}
+else
+{
+    publish data
+     where requerido = 'Falta proceso por completar'
+};
+
+/*Cambiando a error cuando se quede colgado*/
+[update uc_ldm_index
+    set status = 'ERROR',
+        msj_error = 'Error al Procesar',
+        error_dte = sysdate
+  where nvl(process_flg, 0) = 0
+    and status = 'EN PROCESO'
+    and ruta_servidor is null
+    and nvl(cancel_flg, 0) = 0
+    and (sysdate - ins_dt) *(60 * 24) >= 30] catch(@?);
+
+/*Cambiando a sin procesar cuando encuentre error mayor o igual a 2 horas*/
+[update uc_ldm_index
+    set status = 'SIN PROCESAR',
+        msj_error = 'Reprocesado automatico'
+  where nvl(process_flg, 0) = 0
+    and status = 'ERROR'
+    and ruta_servidor is null
+    and nvl(cancel_flg, 0) = 0
+    and (sysdate - error_dte) *(24) >= 2
+    and rownum < 2] catch(@?);
+
+/*Cancelando pedidos que no existen*/
+[update uc_ldm_index i
+    set i.msj_error = 'Cancelado automático, pedido no existe',
+        i.cancel_flg = 1,
+        i.status = 'CANCELADO'
+  where i.status in ('EN PROCESO', 'SIN PROCESAR')
+    and i.type_documento = 'ORDEN'
+    and i.ruta_servidor is null
+    and nvl(i.process_flg, 0) = 0
+    and not exists(select 'x'
+                     from ord o
+                    where o.ordnum = i.ref_id
+                      and o.client_id = i.client_id
+                      and o.wh_id = o.wh_id)
+    and nvl(i.cancel_flg, 0) = 0] catch(@?);
+
+/*Cancelando registros que tienen mas de 30 dias o mas en estado EN VALIDACION*/
+[update uc_ldm_index i
+    set i.msj_error = 'Cancelado automático, mas de 2 meses en validacion',
+        i.cancel_flg = 1,
+        i.status = 'CANCELADO'
+  where i.status in ('EN VALIDACION')
+    and i.ruta_servidor is null
+    and nvl(i.process_flg, 0) = 0
+    and sysdate - (i.ins_dt - 15) >= 60
+    and nvl(i.cancel_flg, 0) = 0] catch(@?);
