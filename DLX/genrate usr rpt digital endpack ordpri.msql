@@ -1,0 +1,557 @@
+[select *
+   from (select ord.wh_id,
+                ord.client_id,
+                ord.ordnum,
+                ord.ordnum ordnum2,
+                case when(rp.rpt_list_emp_clie_dte is null and (ord.client_id = 'C50' or ord.client_id = 'C54' or ord.client_id = 'C45')) then 'LPGSKCL'
+                end lpgskcl,
+                case when (rp.rpt_list_emp_clie_dte is null and ord.client_id in ('C58', 'C98', 'C62')) then 'LPPFICl'
+                end lppficl,
+                case when (rp.rpt_instructivo_desp_dte is null and ord.csr_phnnum is not null) then 'INSTRUC'
+                end instruc,
+                case when (ord.client_id in ('C58', 'C98') and rp.rpt_caricom_dte is null and ad.ctry_name in ('TTO', 'JAM', 'BHS', 'BRB')) then 'CARICOM'
+                end caricom,
+                case when (ord.client_id in ('C58', 'C98') and ord.cponum is not null) then '3'
+                     else '4'
+                end cpo2,
+                case when(ord.client_id in ('C50', 'C54', 'C62', 'C45') and (ord.cponum is not null or ord.cponum is null)) then '5'
+                     else '6'
+                end cpo3,
+                case when (ord.client_id in ('C58', 'C98') and ord.csr_phnnum = ord.uc_prim_ordnum) then 'SI'
+                     else 'NO'
+                end pfiord,
+                case when(ord.client_id in ('C50', 'C54', 'C62', 'C45') and ord.csr_phnnum is not null) then 'SI'
+                     else 'NO'
+                end gskord,
+                case when (ord.client_id in ('C58', 'C98') and ord.btcust = '2000004472' and rp.rpt_caricom_dte is null and ad.ctry_name in ('TTO', 'JAM', 'BHS', 'BRB')) then 'TRADE DESCONT'
+                     when (ord.client_id in ('C58', 'C98') and ord.btcust != '2000004472' and rp.rpt_caricom_dte is null and ad.ctry_name in ('TTO', 'JAM', 'BHS', 'BRB')) then 'DISCOUNT'
+                end discon,
+                ad.ctry_name,
+                ord.cponum,
+                ord.csr_phnnum,
+                cr.car_move_id,
+                vc.adddte,
+                vc.fin_empaque,
+                ord.uc_prim_ordnum,
+                rp.rpt_list_emp_fin,
+                rp.rpt_list_emp_fin_dte,
+                rp.rpt_list_emp_clie,
+                rp.rpt_list_emp_clie_dte,
+                rp.rpt_caricom,
+                rp.rpt_caricom_dte,
+                rp.rpt_cubierta_exp,
+                rp.rpt_cubierta_exp_dte,
+                rp.rpt_pepermin,
+                rp.rpt_pepermin_dte,
+                rp.rpt_instructivo_desp,
+                rp.rpt_instructivo_desp_dte,
+                rp.rpt_monitores_temp_dte,
+                rp.rpt_monitores_temp
+           from vc_fechas_tracking vc
+           join ord
+             on vc.ordnum = ord.ordnum
+            and vc.client_id = ord.client_id
+            and vc.wh_id = ord.wh_id
+           left
+           join adrmst ad
+             on ad.adr_id = ord.st_adr_id
+            and ad.client_id = ord.client_id
+           left
+           join vc_rpt_digitizing rp
+             on rp.ordnum = vc.ordnum
+            and ord.client_id = vc.client_id
+            and rp.wh_id = vc.wh_id
+           left
+           join pckwrk pk
+             on pk.ordnum = ord.ordnum
+            and pk.client_id = ord.client_id
+            and pk.wh_id = ord.wh_id
+           left
+           join shipment sh
+             on sh.ship_id = pk.ship_id
+            and sh.wh_id = pk.wh_id
+           left
+           join stop st
+             on sh.stop_id = st.stop_id
+           left
+           join car_move cr
+             on cr.car_move_id = st.car_move_id
+          where vc.fin_empaque is not null
+            and ord.client_id in ('C58', 'C54', 'C50', 'C98', 'C62', 'C45')
+            and ord.ordtyp not in ('CA', 'MERM')
+            and ord.csr_phnnum is not null
+            and pk.wrktyp = 'K'
+            and to_char(ord.adddte, 'YYYYMMDD') between to_char(sysdate -30, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD')
+            and vc.dispatch_dte is null
+            and sh.shpsts != 'B'
+            and ord.csr_phnnum != '8093523284'
+          group by ord.wh_id,
+                ord.client_id,
+                ord.ordnum,
+                ad.ctry_name,
+                ord.cponum,
+                vc.adddte,
+                vc.fin_empaque,
+                ord.btcust,
+                cr.car_move_id,
+                ord.csr_phnnum,
+                ord.uc_prim_ordnum,
+                rp.rpt_list_emp_fin,
+                rp.rpt_list_emp_fin_dte,
+                rp.rpt_list_emp_clie,
+                rp.rpt_list_emp_clie_dte,
+                rp.rpt_caricom,
+                rp.rpt_caricom_dte,
+                rp.rpt_cubierta_exp,
+                rp.rpt_cubierta_exp_dte,
+                rp.rpt_pepermin,
+                rp.rpt_pepermin_dte,
+                rp.rpt_instructivo_desp,
+                rp.rpt_instructivo_desp_dte,
+                rp.rpt_monitores_temp_dte,
+                rp.rpt_monitores_temp
+          order by vc.adddte)
+  where (lpgskcl is not null or instruc is not null or caricom is not null or lppficl is not null or discon is not null)
+    and (cpo2 = '3' or cpo3 = '5')
+    and (pfiord = 'SI' or gskord = 'SI')
+    and rownum < 6] catch(@?)
+|
+if (@? = 0)
+{
+    [select SUM(pckwrk.lm_assign_num) peso_gravado,
+            sum(round(ctnmst.ctnwgt / 35.2739619, 2)) peso_cartones
+       from pckwrk
+       left
+       join ctnmst
+         on pckwrk.ctncod = ctnmst.ctncod
+        and pckwrk.wh_id = ctnmst.wh_id
+       left
+       join ord
+         on pckwrk.ordnum = ord.ordnum
+        and pckwrk.client_id = ord.client_id
+        and pckwrk.wh_id = ord.wh_id
+      where pckwrk.wrktyp = 'K'
+        and pckwrk.ordnum = @ordnum
+        and pckwrk.client_id = @client_id
+        and pckwrk.wh_id = nvl(@wh_id, @@wh_id)
+        and ord.ordtyp in ('EA', 'EM', 'LPA', 'SO')
+        and (select count('x')
+               from invdtl
+              where invdtl.subnum = pckwrk.subnum) > 0
+      order by pckwrk.cur_cas asc] catch(@?)
+    |
+    [select sum(tot_peso) + nvl(@peso_cartones, 0) tot_peso
+       from (select invdtl.subnum,
+                    round(sum(invdt l.untqty) *round(round(prtmst.grswgt / 35.2739619, 4) / (prtmst.untcas), 4), 4) tot_peso
+               from invdtl,
+                    prtmst,
+                    invsub,
+                    pckwrk
+              where prtmst.prtnum = invdtl.prtnum
+                and prtmst.prt_client_id = invdtl.prt_client_id
+                and invdtl.subnum = invsub.subnum
+                and pckwrk.subnum = invsub.subnum
+             --and pckwrk.wrktyp = 'K'
+
+                and pckwrk.client_id = @client_id
+                and invdtl.prt_client_id = @client_id
+                and prtmst.wh_id_tmpl = nvl(@wh_id, @@wh_id)
+                and pckwrk.ordnum = @ordnum
+              group by invdtl.subnum,
+                    prtmst.grswgt,
+                    prtmst.untcas
+              order by invdtl.subnum)] catch(@?)
+    |
+    [Select abs(((@peso_gravado * 100) / @tot_peso) - 100) porcentaje,
+            round(abs(@peso_gravado - @tot_peso), 4) kilos_abs
+       from dual]
+    |
+    if (@kilos_abs < 1 and @kilos_abs != 0)
+    {
+        publish data
+         where quitar_warning = 1
+    }
+    |
+    publish data
+     where quitar_warning = @quitar_warning
+    |
+    if (@? = 0)
+    {
+        publish data
+         where validar = 'cd E:\' || @client_id || '\' || @csr_phnnum
+           and crear = 'MD E:\' || @client_id || '\' || @csr_phnnum
+        |
+        remote('192.168.100.174:4700')
+        {
+            execute os command
+             where cmd = @validar catch(@?)
+            |
+            if (@? != 0)
+            {
+                execute os command
+                 where cmd = @crear catch(@?)
+            }
+            else
+            {
+                publish data
+                 where rr = 'Carpeta existe'
+            }
+        };
+        publish data
+         where format_typ = 'pdf'
+           and locale_id = @@LOCALE_ID
+           and dest_typ = 'file'
+           and path = 'E:\' || @client_id || '\' || @csr_phnnum || '\'
+           and pathnew = 'E:\' || @client_id || '\' || @csr_phnnum || '\'
+           and elegir = 1
+           and descrip = 'PHARMACEUTICALS'
+           and calculo = 'E'
+           and show1 = '3'
+           and descripcion_mercancia = 'MEDICAMENTO USO HUMANO'
+           and saldesd_ff = 'MITZA'
+           and deduction = @discon
+           and ordnum2 = @ordnum2
+           and csr_phnnum = @csr_phnnum
+           and client_id = @client_id
+           and wh_id = @wh_id
+        |
+        if (@lppficl = 'LPPFICl')
+        {
+            generate moca report
+             where rpt_id = 'Usr-RepListaEmpq-GSK-CLIENTE'
+               and dest_typ = 'file'
+               and format_typ = 'pdf'
+               and dest = @path || '11-LISTA_DE_EMPAQUE_CORTA _' || @ordnum || '.pdf'
+               and num_copies = '1'
+               and gen_usr_id = 'DIGIREPORTNOINSERTA'
+               and locale_id = 'MEXICAN_SPANISH'
+               and quitar_warning = nvl(@quitar_warning, 0)
+               AND ordenes = @ordnum
+               AND elegir = @elegir
+               and agranel = @agranel
+               and calculada = @calculada
+               AND wh_id = @wh_id
+               AND client_id = @client_id catch(@?)
+            |
+            if (@? = 0)
+            {
+                publish data
+                 where destnew = @pathnew || '11-LISTA_DE_EMPAQUE_CORTA _' || @ordnum || '.pdf'
+                |
+                [select 'X'
+                   from vc_ldm_index
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)
+                    and document = @ordnum
+                    and process = @destnew] catch(@?)
+                |
+                if (@? != 0)
+                {
+                    [insert
+                       into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                     values (nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Lista de Empaque Cliente', @ordnum, @@usr_id)]
+                }
+                |
+                [update vc_rpt_digitizing
+                    set rpt_list_emp_clie = @dest,
+                        rpt_list_emp_clie_dte = sysdate
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+            else
+            {
+                [update vc_rpt_digitizing
+                    set rpt_list_emp_clie = 'ERROR AL MEMOENTO DE GENERARCE AUTOMATICO',
+                        rpt_list_emp_clie_dte = sysdate
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+        }
+        |
+        if (@lpgskcl = 'LPGSKCL')
+        {
+            generate moca report
+             where rpt_id = 'Usr-RepListaEmpq-GSK-CLIENTEMM'
+               and dest_typ = 'file'
+               and format_typ = 'pdf'
+               and dest = @path || '11-LISTA_DE_EMPAQUE_CORTA _' || @ordnum || '.pdf'
+               and num_copies = '1'
+               and gen_usr_id = 'DIGIREPORTNOINSERTA'
+               and locale_id = 'MEXICAN_SPANISH'
+               and quitar_warning = nvl(@quitar_warning, 0)
+               AND ordenes = @ordnum
+               AND wh_id = @wh_id
+               AND client_id = @client_id catch(@?)
+            |
+            if (@? = 0)
+            {
+                publish data
+                 where destnew = @pathnew || '11-LISTA_DE_EMPAQUE_CORTA _' || @ordnum || '.pdf'
+                |
+                [select 'X'
+                   from vc_ldm_index
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)
+                    and document = @ordnum
+                    and process = @destnew] catch(@?)
+                |
+                if (@? != 0)
+                {
+                    [insert
+                       into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                     values (nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Lista de Empaque Cliente', @ordnum, @@usr_id)]
+                }
+                |
+                [update vc_rpt_digitizing
+                    set rpt_list_emp_clie = @dest,
+                        rpt_list_emp_clie_dte = sysdate
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+            else
+            {
+                [update vc_rpt_digitizing
+                    set rpt_list_emp_clie = 'ERROR AL MEMOENTO DE GENERARCE AUTOMATICO',
+                        rpt_list_emp_clie_dte = sysdate
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+        }
+        |
+        if (@lpgskcl = 'LPGSKCL' or @lppficl = 'LPPFICl')
+        {
+            generate moca report
+             where rpt_id = 'Usr-RepListaEmpq-GSK-FINAL'
+               and dest_typ = 'file'
+               and format_typ = 'pdf'
+               and dest = @path || '12-LISTA_DE_EMPAQUE_LARGA ' || @ordnum || '.pdf'
+               and num_copies = '1'
+               and gen_usr_id = 'DIGIREPORT'
+               and locale_id = 'MEXICAN_SPANISH'
+               and quitar_warning = nvl(@quitar_warning, 0)
+               AND ordenes = @ordnum
+               AND elegir = @elegir
+               and agranel = @agranel
+               and calculada = @calculada
+               AND wh_id = @wh_id
+               AND client_id = @client_id catch(@?)
+            |
+            if (@? = 0)
+            {
+                publish data
+                 where destnew = @pathnew || '11-LISTA_DE_EMPAQUE_CORTA _' || @ordnum || '.pdf'
+                |
+                [select 'X'
+                   from vc_ldm_index
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)
+                    and document = @ordnum
+                    and process = @destnew] catch(@?)
+                |
+                if (@? != 0)
+                {
+                    [insert
+                       into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                     values (nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Lista de Empaque Detallada', @ordnum, @@usr_id)]
+                }
+                |
+                [update vc_rpt_digitizing
+                    set rpt_list_emp_fin = @dest,
+                        rpt_list_emp_fin_dte = sysdate
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+            else
+            {
+                [update vc_rpt_digitizing
+                    set rpt_list_emp_fin = 'ERROR AL MEMOENTO DE GENERARCE AUTOMATICO',
+                        rpt_list_emp_fin_dte = sysdate
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+        }
+        |
+        if (@instruc = 'INSTRUC' and @csr_phnnum)
+        {
+            generate MOCA report
+             where rpt_id = 'usr_instructivo_des_co'
+               and dest_typ = 'file'
+               and format_typ = 'pdf'
+               and dest = @path || '7-INSTRUCTIVO_' || @csr_phnnum || '.pdf'
+               and gen_usr_id = 'DIGIREPORT'
+               and locale_id = 'MEXICAN_SPANISH'
+               and num_copies = '1'
+               and consolidador = @consolidador
+               AND calculo = @calculo
+               AND att = @att
+               AND wh_id = @wh_id
+               AND cargo_adicional = @cargo_adicional
+               AND client_id = @client_id
+               AND saldesd_ff = @saldesd_ff
+               AND ruta = @csr_phnnum
+               AND comentario = @comentario
+               AND descripcion_mercancia = @descripcion_mercancia
+               AND notificar = @notificar
+               AND marca = @marca
+               AND cargo_al_cliente = @cargo_al_cliente
+               AND show1 = @show1 catch(@?)
+            |
+            if (@? = 0)
+            {
+                [select 'X'
+                   from vc_ldm_index
+                  where client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)
+                    and document = @csr_phnnum
+                    and process = @dest] catch(@?)
+                |
+                if (@? != 0)
+                {
+                    [insert
+                       into vc_ldm_index(wh_id, client_id, document, type, adddate, process, type_doc, process_dte, repro_usr)
+                     values (nvl(@@wh_id, @wh_id), @client_id, @csr_phnnum, 'RUTA', sysdate, @dest, 'Instructivo de Despacho', sysdate, @@usr_id)]
+                }
+                |
+                [update vc_rpt_digitizing
+                    set rpt_instructivo_desp = @dest,
+                        rpt_instructivo_desp_dte = sysdate
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+            else
+            {
+                [update vc_rpt_digitizing
+                    set rpt_instructivo_desp = 'ERROR AL MEMOENTO DE GENERARCE AUTOMATICO',
+                        rpt_instructivo_desp_dte = sysdate
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+        }
+        |
+        if (@caricom = 'CARICOM')
+        {
+            generate MOCA report
+             where rpt_id = 'Usr_RepCaricompfi'
+               and dest_typ = 'file'
+               and format_typ = 'pdf'
+               and dest = @path || '8-CARICOM_' || @ordnum || '.pdf'
+               and num_copies = '1'
+               and gen_usr_id = 'DIGIREPORT'
+               and locale_id = 'MEXICAN_SPANISH'
+               and wh_id = nvl(@@wh_id, @wh_id)
+               AND deduction = @deduction
+               AND discount2 = @discount2
+               AND client_id = @client_id
+               AND descrip = @descrip
+               AND factura2 = @factura2
+               AND ordnum = @csr_phnnum
+               AND calculo = @calculo catch(@?)
+            |
+            if (@? = 0)
+            {
+                publish data
+                 where destnew = @pathnew || '8-CARICOM_' || @ordnum || '.pdf'
+                |
+                [select 'X'
+                   from vc_ldm_index
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)
+                    and document = @ordnum
+                    and process = @destnew] catch(@?)
+                |
+                if (@? != 0)
+                {
+                    [insert
+                       into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                     values (nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Caricom Farma', @ordnum, @@usr_id)]
+                }
+                |
+                [update vc_rpt_digitizing
+                    set rpt_caricom = @dest,
+                        rpt_caricom_dte = sysdate
+                  where ordnum = @ordnum2
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+            else
+            {
+                [update vc_rpt_digitizing
+                    set rpt_caricom = 'ERROR AL MEMOENTO DE GENERARCE AUTOMATICO',
+                        rpt_caricom_dte = sysdate
+                  where ordnum = @ordnum2
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+        }
+        |
+        if (@origen = 'ORIGEN')
+        {
+            generate moca report
+             where rpt_id = 'usr-RepCertificadoOrigen-FARMA'
+               and dest_typ = 'file'
+               and format_typ = 'pdf'
+               and dest = @path || 'Certificado_de_Origen_' || @ordnum || '.pdf'
+               and num_copies = '1'
+               and gen_usr_id = 'DIGIREPORT'
+               and locale_id = 'MEXICAN_SPANISH'
+               and calculo = @calculo
+               AND msg = @descripcion_mercancia
+               AND client_id = @client_id
+               AND flgctn = @flgctn
+               AND msg2 = @msg2
+               AND icoterm = @icoterm
+               AND wh_id = nvl(@@wh_id, @wh_id)
+               AND ordenes = @ordnum catch(@?)
+            |
+            if (@? = 0)
+            {
+                publish data
+                 where destnew = @pathnew || 'Certificado_de_Origen_' || @ordnum || '.pdf'
+                |
+                [select 'X'
+                   from vc_ldm_index
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)
+                    and document = @ordnum
+                    and process = @destnew] catch(@?)
+                |
+                if (@? != 0)
+                {
+                    [insert
+                       into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                     values (nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Certificado de Origen Farma', @ordnum, @@usr_id)]
+                }
+                |
+                [update vc_rpt_digitizing
+                    set rpt_certificado_org = @dest,
+                        rpt_certificado_org_dte = sysdate
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+            else
+            {
+                [update vc_rpt_digitizing
+                    set rpt_certificado_org = 'ERROR AL MEMOENTO DE GENERARCE AUTOMATICO',
+                        rpt_certificado_org_dte = sysdate
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+        }
+    }
+}
