@@ -1,0 +1,152 @@
+/**generate usr rpt digital comp ordpri**/
+[select wh_id,
+        client_id,
+        ordnum,
+        uc_prim_ordnum,
+        ctry_name,
+        cponum,
+        adddte,
+        csr_phnnum,
+        fin_empaque,
+        pfiord,
+        gskord,
+        rpt_compro_ord,
+        rpt_compro_ord_dte
+   from (select ord.wh_id,
+                ord.client_id,
+                ord.ordnum,
+                ord.uc_prim_ordnum,
+                ad.ctry_name,
+                ord.cponum,
+                vc.adddte,
+                ord.csr_phnnum,
+                vc.fin_empaque,
+                case when (ord.client_id in ('C58', 'C98') and ord.csr_phnnum = ord.uc_prim_ordnum) then 'SI'
+                     else 'NO'
+                end pfiord,
+                case when (ord.client_id in ('C50', 'C54', 'C62','C45') and ord.csr_phnnum is not null) then 'SI'
+                     else 'NO'
+                end gskord,
+                rp.rpt_compro_ord,
+                rp.rpt_compro_ord_dte
+           from vc_fechas_tracking vc
+           join ord
+             on vc.ordnum = ord.ordnum
+            and vc.client_id = ord.client_id
+            and vc.wh_id = ord.wh_id
+           left
+           join adrmst ad
+             on ad.adr_id = ord.st_adr_id
+            and ad.client_id = ord.client_id
+           left
+           join vc_rpt_digitizing rp
+             on rp.ordnum = vc.ordnum
+            and rp.client_id = vc.client_id
+            and rp.wh_id = vc.wh_id
+          where vc.ldmdte is null
+            and ord.client_id in ('C58', 'C50', 'C54', 'C98', 'C62','C45')
+            and ord.ordtyp not in ('CA', 'MERM')
+         --and vc.fin_empaque is null
+
+            and ord.csr_phnnum is not null
+            and rp.rpt_compro_ord_dte is null
+            and to_char(ord.adddte, 'YYYYMMDD') between to_char(sysdate -35, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD')
+          group by ord.wh_id,
+                ord.client_id,
+                ord.ordnum,
+                ord.uc_prim_ordnum,
+                ord.csr_phnnum,
+                ad.ctry_name,
+                ord.cponum,
+                vc.adddte,
+                vc.fin_empaque,
+                rp.rpt_compro_ord,
+                rp.rpt_compro_ord_dte
+          order by vc.adddte)
+  where (gskord = 'SI' or pfiord = 'SI')
+    and rownum < 11] catch(@?)
+|
+{
+    publish data
+     where validar = 'cd E:\' || @client_id || '\' || @csr_phnnum
+       and crear = 'MD E:\' || @client_id || '\' || @csr_phnnum
+    |
+    remote('192.168.100.174:4700')
+    {
+        execute os command
+         where cmd = @validar catch(@?)
+        |
+        if (@? != 0)
+        {
+            execute os command
+             where cmd = @crear catch(@?)
+        }
+        else
+        {
+            publish data
+             where rr = 'Carpeta existe'
+        }
+    };
+    publish data
+     where format_typ = 'pdf'
+       and locale_id = @@LOCALE_ID
+       and dest_typ = 'file'
+       and path = 'E:\' || @client_id || '\' || @csr_phnnum || '\'
+       and pathnew = 'E:\' || @client_id || '\' || @csr_phnnum || '\'
+    |
+    if (nvl(@@wh_id, @wh_id) = 'JCUF' or nvl(@@wh_id, @wh_id) = 'JCUC')
+    {
+        if (@adddte and @rpt_compro_ord is null and @rpt_compro_ord_dte is null)
+        {
+            generate moca report
+             where rpt_id = 'usr_totales_acuse_interv1'
+               and dest_typ = 'file'
+               and format_typ = 'pdf'
+               and dest = @path || '13-COMPARATIVO_' || @ordnum || '.pdf'
+               and num_copies = '1'
+               and gen_usr_id = 'DIGIREPORT'
+               and locale_id = 'MEXICAN_SPANISH'
+               AND client_id = @client_id
+               AND ordnum = @ordnum
+               and wh_id = @wh_id catch(@?)
+            |
+            if (@? = 0)
+            {
+                publish data
+                 where destnew = @pathnew || '13-COMPARATIVO_' || @ordnum || '.pdf'
+                |
+                [select 'X'
+                   from vc_ldm_index
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)
+                    and document = @ordnum
+                    and process = @destnew] catch(@?)
+                |
+                if (@? != 0)
+                {
+                    [insert
+                       into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                     values(nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Comparativo de ordenes', @ordnum, @@usr_id)]
+                }
+                |
+                [update vc_rpt_digitizing
+                    set rpt_compro_ord = @dest,
+                        rpt_compro_ord_dte = sysdate
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+            else
+            {
+                [update vc_rpt_digitizing
+                    set rpt_compro_ord = 'ERROR AL MEMOENTO DE GENERARCE AUTOMATICO',
+                        rpt_compro_ord_dte = sysdate
+                  where ordnum = @ordnum
+                    and client_id = @client_id
+                    and wh_id = nvl(@@wh_id, @wh_id)]
+            }
+        }
+    }
+}
