@@ -416,22 +416,43 @@ if (@? = 0)
         |
         if (@caricom = 'CARICOM')
         {
-            generate MOCA report
-             where rpt_id = 'Usr_RepCaricompfi'
-               and dest_typ = 'file'
-               and format_typ = 'pdf'
-               and dest = @path || '8-CARICOM_' || @ordnum || '.pdf'
-               and num_copies = '1'
-               and gen_usr_id = 'DIGIREPORT'
-               and locale_id = 'MEXICAN_SPANISH'
-               and wh_id = nvl(@@wh_id, @wh_id)
-               AND deduction = @deduction
-               AND discount2 = @discount2
-               AND client_id = @client_id
-               AND descrip = @descrip
-               AND factura2 = @factura2
-               AND ordnum = @ordnum
-               AND calculo = @calculo catch(@?)
+            if (@uc_prim_ordnum is null)
+            {
+                generate MOCA report
+                 where rpt_id = 'Usr_RepCaricompfi'
+                   and dest_typ = 'file'
+                   and format_typ = 'pdf'
+                   and dest = @path || '8-CARICOM_' || @ordnum || '.pdf'
+                   and num_copies = '1'
+                   and gen_usr_id = 'DIGIREPORT'
+                   and locale_id = 'MEXICAN_SPANISH'
+                   and wh_id = nvl(@@wh_id, @wh_id)
+                   AND deduction = @deduction
+                   AND discount2 = @discount2
+                   AND client_id = @client_id
+                   AND descrip = @descrip
+                   AND factura2 = @factura2
+                   AND ordnum = @ordnum
+                   AND calculo = @calculo catch(@?)
+            }
+            else
+            {
+                generate MOCA report
+                 where rpt_id = 'Usr_RepCaricompfi_orders'
+                   and dest_typ = 'file'
+                   and format_typ = 'pdf'
+                   and dest = @path || '8-CARICOM_' || @uc_prim_ordnum || '.pdf'
+                   and num_copies = '1'
+                   and gen_usr_id = 'DIGIREPORT'
+                   and locale_id = 'MEXICAN_SPANISH'
+                   and wh_id = nvl(@wh_id, @@wh_id)
+                   and uc_prim_ordnum = @uc_prim_ordnum
+                   AND descrip = @descrip
+                   AND factura2 = @factura2
+                   AND calculo = @calculo
+                   AND deduction = @deduction
+                   AND discount2 = @discount2 catch(@?)
+            }
             |
             if (@? = 0)
             {
