@@ -1,9 +1,10 @@
+
 [select *
    from (select ord.wh_id,
                 ord.client_id,
                 ord.ordnum,
                 ord.ordnum ordnum2,
-                case when(rp.rpt_list_emp_clie_dte is null and (ord.client_id = 'C50' or ord.client_id = 'C54' or ord.client_id = 'C45')) then 'LPGSKCL'
+                case when (rp.rpt_list_emp_clie_dte is null and (ord.client_id = 'C50' or ord.client_id = 'C54' or ord.client_id = 'C45')) then 'LPGSKCL'
                 end lpgskcl,
                 case when (rp.rpt_list_emp_clie_dte is null and ord.client_id in ('C58', 'C98', 'C62')) then 'LPPFICl'
                 end lppficl,
@@ -14,13 +15,13 @@
                 case when (ord.client_id in ('C58', 'C98') and ord.cponum is not null) then '3'
                      else '4'
                 end cpo2,
-                case when(ord.client_id in ('C50', 'C54', 'C62', 'C45') and (ord.cponum is not null or ord.cponum is null)) then '5'
+                case when (ord.client_id in ('C50', 'C54', 'C62', 'C45') and (ord.cponum is not null or ord.cponum is null)) then '5'
                      else '6'
                 end cpo3,
                 case when (ord.client_id in ('C58', 'C98') and ord.csr_phnnum = ord.uc_prim_ordnum) then 'SI'
                      else 'NO'
                 end pfiord,
-                case when(ord.client_id in ('C50', 'C54', 'C62', 'C45') and ord.csr_phnnum is not null) then 'SI'
+                case when (ord.client_id in ('C50', 'C54', 'C62', 'C45') and ord.csr_phnnum is not null) then 'SI'
                      else 'NO'
                 end gskord,
                 case when (ord.client_id in ('C58', 'C98') and ord.btcust = '2000004472' and rp.rpt_caricom_dte is null and ad.ctry_name in ('TTO', 'JAM', 'BHS', 'BRB')) then 'TRADE DESCONT'
@@ -442,22 +443,43 @@ if (@? = 0)
         |
         if (@caricom = 'CARICOM')
         {
-            generate MOCA report
-             where rpt_id = 'Usr_RepCaricompfi'
-               and dest_typ = 'file'
-               and format_typ = 'pdf'
-               and dest = @path || '8-CARICOM_' || @ordnum || '.pdf'
-               and num_copies = '1'
-               and gen_usr_id = 'DIGIREPORT'
-               and locale_id = 'MEXICAN_SPANISH'
-               and wh_id = nvl(@@wh_id, @wh_id)
-               AND deduction = @deduction
-               AND discount2 = @discount2
-               AND client_id = @client_id
-               AND descrip = @descrip
-               AND factura2 = @factura2
-               AND ordnum = @csr_phnnum
-               AND calculo = @calculo catch(@?)
+            if (@uc_prim_ordnum is not null and (@client_id = 'C58' or @client_id = 'C58'))
+            {
+                generate MOCA report
+                 where rpt_id = 'Usr_RepCaricompfi_orders'
+                   and dest_typ = 'file'
+                   and format_typ = 'pdf'
+                   and dest = @path || '8-CARICOM_' || @uc_prim_ordnum || '.pdf'
+                   and num_copies = '1'
+                   and gen_usr_id = 'DIGIREPORT'
+                   and locale_id = 'MEXICAN_SPANISH'
+                   and wh_id = nvl(@@wh_id, @wh_id)
+                   and uc_prim_ordnum = @csr_phnnum
+                   AND descrip = @descrip
+                   AND factura2 = @factura2
+                   AND calculo = @calculo
+                   AND deduction = @deduction
+                   AND discount2 = @discount2 catch(@?)
+            }
+            else
+            {
+                generate MOCA report
+                 where rpt_id = 'Usr_RepCaricompfi'
+                   and dest_typ = 'file'
+                   and format_typ = 'pdf'
+                   and dest = @path || '8-CARICOM_' || @ordnum || '.pdf'
+                   and num_copies = '1'
+                   and gen_usr_id = 'DIGIREPORT'
+                   and locale_id = 'MEXICAN_SPANISH'
+                   and wh_id = nvl(@@wh_id, @wh_id)
+                   AND deduction = @deduction
+                   AND discount2 = @discount2
+                   AND client_id = @client_id
+                   AND descrip = @descrip
+                   AND factura2 = @factura2
+                   AND ordnum = @csr_phnnum
+                   AND calculo = @calculo catch(@?)
+            }
             |
             if (@? = 0)
             {
