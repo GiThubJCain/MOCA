@@ -24,7 +24,7 @@
     and rp.wh_id = vc.wh_id
   where vc.ldmdte is null
     and vc.fin_empaque is not null
-    and rp.client_id not in ('C06', 'C21', 'C25', 'C29', 'C49', 'C50', 'C52', 'C54', 'C58', 'C60', 'C61', 'C62', 'C63', 'C65', 'C70', 'C98', 'C99', 'C45')
+    and (rp.client_id not in ('C06', 'C21', 'C25', 'C29', 'C49', 'C50', 'C52', 'C54', 'C58', 'C60', 'C61', 'C62', 'C63', 'C65', 'C70', 'C98', 'C99', 'C45', 'C55') or (rp.client_id = 'C55' and ord.cponum is not null))
     and ord.ordtyp not in ('CA', 'MERM')
     and to_char(ord.adddte, 'YYYYMMDD') between to_char(sysdate -20, 'YYYYMM')
     and to_char(sysdate, 'YYYYMMDD')
@@ -563,6 +563,7 @@
                     [update vc_rpt_digitizing
                         set rpt_compro_ord = 'ERROR AL MOMENTO DE GENERAR AUTOMATICO',
                             rpt_compro_ord_dte = sysdate
+							
                       where ordnum = @ordnum
                         and client_id = @client_id
                         and wh_id = nvl(@@wh_id, @wh_id)]
