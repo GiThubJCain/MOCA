@@ -1,0 +1,573 @@
+/*comando generico*/
+[select ord.wh_id,
+        ord.client_id,
+        ord.ordnum,
+        ad.ctry_name,
+        ord.cponum,
+        vc.adddte,
+        vc.fin_empaque,
+        rp.rpt_compro_ord,
+        rp.rpt_compro_ord_dte
+   from vc_fechas_tracking vc
+   join ord
+     on vc.ordnum = ord.ordnum
+    and vc.client_id = ord.client_id
+    and vc.wh_id = ord.wh_id
+   left
+   join adrmst ad
+     on ad.adr_id = ord.st_adr_id
+    and ad.client_id = ord.client_id
+   left
+   join vc_rpt_digitizing rp
+     on rp.ordnum = vc.ordnum
+    and rp.client_id = vc.client_id
+    and rp.wh_id = vc.wh_id
+  where vc.ldmdte is null
+    and vc.fin_empaque is not null
+    and rp.client_id not in ('C06', 'C21', 'C25', 'C29', 'C49', 'C50', 'C52', 'C54', 'C58', 'C60', 'C61', 'C62', 'C63', 'C65', 'C70', 'C98', 'C99', 'C45')
+    and ord.ordtyp not in ('CA', 'MERM')
+    and to_char(ord.adddte, 'YYYYMMDD') between to_char(sysdate -20, 'YYYYMM')
+    and to_char(sysdate, 'YYYYMMDD')
+    and rp.rpt_compro_ord_dte is null
+  group by ord.wh_id,
+        ord.client_id,
+        ord.ordnum,
+        ad.ctry_name,
+        ord.cponum,
+        vc.adddte,
+        vc.fin_empaque,
+        rp.rpt_compro_ord,
+        rp.rpt_compro_ord_dte
+ union all
+ select ord.wh_id,
+        ord.client_id,
+        ord.ordnum,
+        ad.ctry_name,
+        ord.cponum,
+        vc.adddte,
+        vc.fin_empaque,
+        rp.rpt_compro_ord,
+        rp.rpt_compro_ord_dte
+   from vc_fechas_tracking vc
+   join ord
+     on vc.ordnum = ord.ordnum
+    and vc.client_id = ord.client_id
+    and vc.wh_id = ord.wh_id
+   left
+   join adrmst ad
+     on ad.adr_id = ord.st_adr_id
+    and ad.client_id = ord.client_id
+   left
+   join vc_rpt_digitizing rp
+     on rp.ordnum = vc.ordnum
+    and rp.client_id = vc.client_id
+    and rp.wh_id = vc.wh_id
+  where vc.ldmdte is null
+    and vc.fin_empaque is not null
+    and rp.client_id in ('C01', 'C04', 'C14', 'C24', 'C30')
+    and ord.ordtyp in ('EA', 'CO', 'COEP')
+    and to_char(ord.adddte, 'YYYYMMDD') between to_char(sysdate -20, 'YYYYMM')
+    and to_char(sysdate, 'YYYYMMDD')
+    and rp.rpt_compro_ord_dte is null
+  group by ord.wh_id,
+        ord.client_id,
+        ord.ordnum,
+        ad.ctry_name,
+        ord.cponum,
+        vc.adddte,
+        vc.fin_empaque,
+        rp.rpt_compro_ord,
+        rp.rpt_compro_ord_dte
+ union all
+ select ord.wh_id,
+        ord.client_id,
+        ord.ordnum,
+        ad.ctry_name,
+        ord.cponum,
+        vc.adddte,
+        vc.fin_empaque,
+        rp.rpt_compro_ord,
+        rp.rpt_compro_ord_dte
+   from vc_fechas_tracking vc
+   join ord
+     on vc.ordnum = ord.ordnum
+    and vc.client_id = ord.client_id
+    and vc.wh_id = ord.wh_id
+   left
+   join adrmst ad
+     on ad.adr_id = ord.st_adr_id
+    and ad.client_id = ord.client_id
+   left
+   join vc_rpt_digitizing rp
+     on rp.ordnum = vc.ordnum
+    and rp.client_id = vc.client_id
+    and rp.wh_id = vc.wh_id
+  where vc.ldmdte is null
+    and vc.finpick is not null
+    and rp.client_id in ('C01', 'C04', 'C14', 'C24', 'C30')
+    and ord.ordtyp IN ('EM', 'ET', 'CON', 'COCS', 'TR', 'LQ')
+    and to_char(ord.adddte, 'YYYYMMDD') between to_char(sysdate -20, 'YYYYMM')
+    and to_char(sysdate, 'YYYYMMDD')
+    and rp.rpt_compro_ord_dte is null
+  group by ord.wh_id,
+        ord.client_id,
+        ord.ordnum,
+        ad.ctry_name,
+        ord.cponum,
+        vc.adddte,
+        vc.fin_empaque,
+        rp.rpt_compro_ord,
+        rp.rpt_compro_ord_dte] catch(@?)
+|
+{
+    publish data
+     where validar = 'cd E:\' || @client_id || '\' || @ordnum
+       and crear = 'MD E:\' || @client_id || '\' || @ordnum
+    |
+    remote('192.168.100.174:4700')
+    {
+        execute os command
+         where cmd = @validar catch(@?)
+        |
+        if (@? != 0)
+        {
+            execute os command
+             where cmd = @crear catch(@?)
+        }
+        else
+        {
+            publish data
+             where rr = 'Carpeta existe'
+        }
+    };
+    publish data
+     where format_typ = 'pdf'
+       and locale_id = @@LOCALE_ID
+       and dest_typ = 'file'
+       and path = 'E:\' || @client_id || '\' || @ordnum || '\'
+       and pathnew = 'E:\' || @client_id || '\' || @ordnum || '\'
+    |
+    if (nvl(@@wh_id, @wh_id) = 'JCUF' or nvl(@@wh_id, @wh_id) = 'JCUC')
+    {
+        if (@adddte and @rpt_compro_ord is null and @rpt_compro_ord_dte is null)
+        {
+            {
+                if (@client_id = 'C09')
+                {
+                    publish data
+                     where elegir = '1'
+                       AND calculada = '1'
+                    |
+                    generate moca report
+                     where rpt_id = 'Usr-RepListaEmpq-GSK-CLIENTEMM'
+                       and dest_typ = 'file'
+                       and format_typ = 'pdf'
+                       and dest = @path || '11-LISTA_DE_EMPAQUE_CORTA_' || @ordnum || '.pdf'
+                       and num_copies = '1'
+                       and gen_usr_id = 'DIGIREPORT'
+                       and locale_id = 'MEXICAN_SPANISH'
+                       AND ordenes = @ordnum
+                       AND elegir = @elegir
+                       and agranel = @agranel
+                       and calculada = @calculada
+                       AND wh_id = @wh_id
+                       AND client_id = @client_id catch(@?)
+                }
+                else
+                {
+                    publish data
+                     where elegir = '1'
+                       AND calculada = '1'
+                    |
+                    generate moca report
+                     where rpt_id = 'Usr-RepListaEmpq-GSK-CLIENTE'
+                       and dest_typ = 'file'
+                       and format_typ = 'pdf'
+                       and dest = @path || '11-LISTA_DE_EMPAQUE_CORTA_' || @ordnum || '.pdf'
+                       and num_copies = '1'
+                       and gen_usr_id = 'DIGIREPORT'
+                       and locale_id = 'MEXICAN_SPANISH'
+                       AND ordenes = @ordnum
+                       AND elegir = @elegir
+                       and agranel = @agranel
+                       and calculada = @calculada
+                       AND wh_id = @wh_id
+                       AND client_id = @client_id catch(@?)
+                }
+                |
+                if (@? = 0)
+                {
+                    publish data
+                     where destnew = @pathnew || '11-LISTA_DE_EMPAQUE_CORTA_' || @ordnum || '.pdf'
+                    |
+                    [select 'X'
+                       from vc_ldm_index
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)
+                        and document = @ordnum
+                        and process = @destnew] catch(@?)
+                    |
+                    if (@? != 0)
+                    {
+                        [insert
+                           into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                         values (nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Lista de Empaque Cliente', @ordnum, @@usr_id)]
+                    }
+                    |
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = @dest,
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+                else
+                {
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = 'ERROR AL MOMENTO DE GENERAR AUTOMATICO',
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+            }
+            |
+            {
+                publish data
+                 where elegir = '1'
+                |
+                generate moca report
+                 where rpt_id = 'Usr-RepListaEmpq-GSK-FINAL'
+                   and dest_typ = 'file'
+                   and format_typ = 'pdf'
+                   and dest = @path || '12-LISTA_DE_EMPAQUE_LARGA_' || @ordnum || '.pdf'
+                   and num_copies = '1'
+                   and gen_usr_id = 'DIGIREPORT'
+                   and locale_id = 'MEXICAN_SPANISH'
+                   AND ordenes = @ordnum
+                   AND elegir = @elegir
+                   and agranel = @agranel
+                   and calculada = @calculada
+                   AND wh_id = @wh_id
+                   AND client_id = @client_id catch(@?)
+                |
+                if (@? = 0)
+                {
+                    publish data
+                     where destnew = @pathnew || '12-LISTA_DE_EMPAQUE_LARGA_' || @ordnum || '.pdf'
+                    |
+                    [select 'X'
+                       from vc_ldm_index
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)
+                        and document = @ordnum
+                        and process = @destnew] catch(@?)
+                    |
+                    if (@? != 0)
+                    {
+                        [insert
+                           into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                         values (nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Lista de Empaque Detallada', @ordnum, @@usr_id)]
+                    }
+                    |
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = @dest,
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+                else
+                {
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = 'ERROR AL MOMENTO DE GENERAR AUTOMATICO',
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+            }
+            |
+            {
+                generate moca report
+                 where rpt_id = 'usr_totales_acuse_interv1'
+                   and dest_typ = 'file'
+                   and format_typ = 'pdf'
+                   and dest = @path || '13-COMPARATIVO_' || @ordnum || '.pdf'
+                   and num_copies = '1'
+                   and gen_usr_id = 'DIGIREPORT'
+                   and locale_id = 'MEXICAN_SPANISH'
+                   AND client_id = @client_id
+                   AND ordnum = @ordnum
+                   and wh_id = @wh_id catch(@?)
+                |
+                if (@? = 0)
+                {
+                    publish data
+                     where destnew = @pathnew || '13-COMPARATIVO_' || @ordnum || '.pdf'
+                    |
+                    [select 'X'
+                       from vc_ldm_index
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)
+                        and document = @ordnum
+                        and process = @destnew] catch(@?)
+                    |
+                    if (@? != 0)
+                    {
+                        [insert
+                           into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                         values (nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Comparativo de ordenes', @ordnum, @@usr_id)]
+                    }
+                    |
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = @dest,
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+                else
+                {
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = 'ERROR AL MOMENTO DE GENERAR AUTOMATICO',
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+            }
+            |
+            {
+                generate MOCA report
+                 where rpt_id = 'usr_instructivo_des_co'
+                   and gen_usr_id = 'DIGIREPORT'
+                   and dest_typ = 'file'
+                   and format_typ = 'pdf'
+                   and dest = @path || '7-INSTRUCTIVO_' || @ordnum || '.pdf'
+                   and num_copies = '1'
+                   and ordnum1 = @ordnum
+                   AND locale_id = 'MEXICAN_SPANISH'
+                   AND show1 = '3'
+                   AND calculo = 'E'
+                   AND client_id = @client_id
+                   and wh_id = @wh_id catch(@?)
+                |
+                if (@? = 0)
+                {
+                    publish data
+                     where destnew = @pathnew || '7-INSTRUCTIVO_' || @ordnum || '.pdf'
+                    |
+                    [select 'X'
+                       from vc_ldm_index
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)
+                        and document = @ordnum
+                        and process = @destnew] catch(@?)
+                    |
+                    if (@? != 0)
+                    {
+                        [insert
+                           into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                         values (nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Instructivo de Despacho', @ordnum, @@usr_id)]
+                    }
+                    |
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = @dest,
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+                else
+                {
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = 'ERROR AL MOMENTO DE GENERAR AUTOMATICO',
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+            }
+        }
+    }
+    else if (nvl(@@wh_id, @wh_id) = 'JCMT')
+    {
+        if (@adddte and @rpt_compro_ord is null and @rpt_compro_ord_dte is null)
+        {
+            {
+                if (@client_id = 'C01')
+                {
+                    publish data
+                     where rpt_id = 'Usr-ListaEmpDiagioFinal1'
+                }
+                else
+                {
+                    publish data
+                     where rpt_id = 'Usr-ListEmpClSA'
+                }
+                |
+                publish data
+                 where rpt_id = @rpt_id
+                |
+                generate moca report
+                 where rpt_id = @rpt_id
+                   and dest_typ = 'file'
+                   and format_typ = 'pdf'
+                   and dest = @path || '11-LISTA_DE_EMPAQUE_CORTA_' || @ordnum || '.pdf'
+                   and num_copies = '1'
+                   and gen_usr_id = 'DIGIREPORT'
+                   and locale_id = 'MEXICAN_SPANISH'
+                   AND ordenes = @ordnum
+                   AND elegir = @elegir
+                   and agranel = @agranel
+                   and calculada = @calculada
+                   AND wh_id = @wh_id
+                   AND client_id = @client_id catch(@?)
+                |
+                if (@? = 0)
+                {
+                    publish data
+                     where destnew = @pathnew || '11-LISTA_DE_EMPAQUE_CORTA_' || @ordnum || '.pdf'
+                    |
+                    [select 'X'
+                       from vc_ldm_index
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)
+                        and document = @ordnum
+                        and process = @destnew] catch(@?)
+                    |
+                    if (@? != 0)
+                    {
+                        [insert
+                           into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                         values (nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Lista de Empaque Cliente', @ordnum, @@usr_id)]
+                    }
+                    |
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = @dest,
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+                else
+                {
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = 'ERROR AL MOMENTO DE GENERAR AUTOMATICO',
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+            }
+            |
+            {
+                generate moca report
+                 where rpt_id = 'usr_totales_acuse_interv1'
+                   and dest_typ = 'file'
+                   and format_typ = 'pdf'
+                   and dest = @path || '13-COMPARATIVO_' || @ordnum || '.pdf'
+                   and num_copies = '1'
+                   and gen_usr_id = 'DIGIREPORT'
+                   and locale_id = 'MEXICAN_SPANISH'
+                   AND client_id = @client_id
+                   AND ordnum = @ordnum
+                   and wh_id = @wh_id catch(@?)
+                |
+                if (@? = 0)
+                {
+                    publish data
+                     where destnew = @pathnew || '13-COMPARATIVO_' || @ordnum || '.pdf'
+                    |
+                    [select 'X'
+                       from vc_ldm_index
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)
+                        and document = @ordnum
+                        and process = @destnew] catch(@?)
+                    |
+                    if (@? != 0)
+                    {
+                        [insert
+                           into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                         values (nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Comparativo de ordenes', @ordnum, @@usr_id)]
+                    }
+                    |
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = @dest,
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+                else
+                {
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = 'ERROR AL MOMENTO DE GENERAR AUTOMATICO',
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+            }
+            |
+            {
+                generate moca report
+                 where rpt_id = 'Usr-InstructivoDespacho'
+                   and dest_typ = 'file'
+                   and format_typ = 'pdf'
+                   and dest = @path || '7-INSTRUCTIVO_' || @ordnum || '.pdf'
+                   and num_copies = '1'
+                   and locale_id = 'MEXICAN_SPANISH'
+                   and gen_usr_id = 'DIGIREPORT'
+                   AND client_id = @client_id
+                   AND ordnum01 = @ordnum
+                   and wh_id = @wh_id catch(@?)
+                |
+                if (@? = 0)
+                {
+                    publish data
+                     where destnew = @pathnew || '7-INSTRUCTIVO_' || @ordnum || '.pdf'
+                    |
+                    [select 'X'
+                       from vc_ldm_index
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)
+                        and document = @ordnum
+                        and process = @destnew] catch(@?)
+                    |
+                    if (@? != 0)
+                    {
+                        [insert
+                           into vc_ldm_index(wh_id, client_id, document, type, adddate, process, process_dte, type_doc, ordnum, repro_usr)
+                         values (nvl(@@wh_id, @wh_id), @client_id, @ordnum, 'ORDEN', sysdate, @destnew, sysdate, 'Instructivo de Despacho', @ordnum, @@usr_id)]
+                    }
+                    |
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = @dest,
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+                else
+                {
+                    [update vc_rpt_digitizing
+                        set rpt_compro_ord = 'ERROR AL MOMENTO DE GENERAR AUTOMATICO',
+                            rpt_compro_ord_dte = sysdate
+                      where ordnum = @ordnum
+                        and client_id = @client_id
+                        and wh_id = nvl(@@wh_id, @wh_id)]
+                }
+            }
+        }
+    }
+}
