@@ -1,0 +1,2937 @@
+CREATE OR REPLACE FORCE VIEW "SEG_PRODUCTIVIDAD_DIARIA" ("TOTAL", "FECHA", "USR_ID", "PRT_CLIENT_ID", "OPERACION", "CARTON", "QTY_LINEAS_CARTON", "WH_ID", "ORDNUM", "TIPO_ORDEN", "TRNQTY", "BULTOS", "PZ_SUELTAS", "M3") AS 
+  select sum(Total) Total,
+        to_date(to_char(Fecha1, 'YYYYMMDDHH24') || '0000', 'YYYYMMDDHH24MISS') fecha1,
+        ack_usr_id usr_id,
+        cliente prt_client_id,
+        Operacion,
+        carton,
+        qty_lineas_carton,
+        wh_id,
+        orden ordnum,
+        tipo_orden,
+        sum(qty_piezas_total) trnqty,
+        qty_cajas_completas bultos,
+        qty_pz_sueltas pz_sueltas,
+        m3
+   from (select count(ack_usr_id) Total,
+                Fecha1,
+                ack_usr_id,
+                nvl(prt_client_id, 'Sin Cliente') cliente,
+                Operacion,
+                'No Clasifica' carton,
+                to_number('0') qty_lineas_carton,
+                wh_id,
+                'No Clasifica' orden,
+                'No Clasifica' tipo_orden,
+                qty_piezas_total,
+                qty_cajas_completas,
+                qty_pz_sueltas,
+                to_number('0') m3,
+                null uc_granel_flg
+           from (Select cnthst.cntdte Fecha1,
+                        'Conteo Ciclico' Operacion,
+                        nvl(cnthst.cnt_usr_id, cnthst.mod_usr_id) ack_usr_id,
+                        to_number('0') qty_piezas_total,
+                        to_number('0') qty_cajas_completas,
+                        to_number('0') qty_pz_sueltas,
+                        cnthst.wh_id,
+                        cnthst.cntbat,
+                        cnthst.cnttyp,
+                        cnthst.prt_client_id
+                   from cnthst
+                  where /*cnthst.cntdte between to_date(to_char(sysdate - (1 / 24), 'YYYYMMDDHH24') || '0000', 'YYYYMMDDHH24MISS')
+                    and to_date(to_char(sysdate - (1 / 24), 'YYYYMMDDHH24') || '5959', 'YYYYMMDDHH24MISS')*/
+                    cnthst.cntdte between sysdate -7 and sysdate
+                    and cnthst.cnttyp in ('CY', 'CA', 'PHY', 'CF', 'C')
+                    and cnthst.wh_id in ('JCMT', 'JCUC', 'JCUF')
+                  group by cnthst.cntdte,
+                        'Conteo Ciclico',
+                        nvl(cnthst.cnt_usr_id, cnthst.mod_usr_id),
+                        to_number('0'),
+                        cnthst.wh_id,
+                        cnthst.cntbat,
+                        cnthst.cnttyp,
+                        cnthst.stoloc,
+                        cnthst.prt_client_id)
+          group by Fecha1,
+                nvl(prt_client_id, 'Sin Cliente'),
+                wh_id,
+                operacion,
+                ack_usr_id,
+                'No Clasifica',
+                qty_piezas_total,
+                qty_cajas_completas,
+                qty_pz_sueltas
+         union
+         select count(ack_usr_id) Total,
+                Fecha1,
+                ack_usr_id,
+                nvl(prt_client_id, 'Sin Cliente') cliente,
+                Operacion,
+                'No Clasifica' carton,
+                to_number('0') qty_lineas_carton,
+                wh_id,
+                'No Clasifica' orden,
+                'No Clasifica' tipo_orden,
+                qty_piezas_total,
+                qty_cajas_completas,
+                qty_pz_sueltas,
+                to_number('0') m3,
+                null uc_granel_flg
+           from (Select cntwrk.cntdte Fecha1,
+                        'Conteo Ciclico' Operacion,
+                        nvl(cntwrk.cnt_usr_id, cntwrk.mod_usr_id) ack_usr_id,
+                        to_number('0') qty_piezas_total,
+                        to_number('0') qty_cajas_completas,
+                        to_number('0') qty_pz_sueltas,
+                        cntwrk.wh_id,
+                        cntwrk.cntbat,
+                        cntwrk.cnttyp,
+                        cntwrk.prt_client_id
+                   from cntwrk
+                  where /*cntwrk.cntdte between to_date(to_char(sysdate - (1 / 24), 'YYYYMMDDHH24') || '0000', 'YYYYMMDDHH24MISS')
+                    and to_date(to_char(sysdate - (1 / 24), 'YYYYMMDDHH24') || '5959', 'YYYYMMDDHH24MISS')*/
+                    cntwrk.cntdte between sysdate -7 and sysdate
+                    and cntwrk.cnttyp in ('CY', 'CA', 'PHY', 'CF', 'C')
+                    and cntwrk.wh_id in ('JCMT', 'JCUC', 'JCUF')
+                  group by cntwrk.cntdte,
+                        'Conteo Ciclico',
+                        nvl(cntwrk.cnt_usr_id, cntwrk.mod_usr_id),
+                        to_number('0'),
+                        cntwrk.wh_id,
+                        cntwrk.cntbat,
+                        cntwrk.cnttyp,
+                        cntwrk.stoloc,
+                        cntwrk.prt_client_id)
+          group by Fecha1,
+                nvl(prt_client_id, 'Sin Cliente'),
+                wh_id,
+                operacion,
+                ack_usr_id,
+                'No Clasifica',
+                qty_piezas_total,
+                qty_cajas_completas,
+                qty_pz_sueltas
+         union
+         select count(cnt_usr_id) Total,
+                Fecha1,
+                cnt_usr_id,
+                nvl(prt_client_id, 'Sin Cliente') cliente,
+                Operacion,
+                'No Clasifica' carton,
+                to_number('0') qty_lineas_carton,
+                wh_id,
+                'No Clasifica' orden,
+                'No Clasifica' tipo_orden,
+                qty_piezas_total,
+                qty_cajas_completas,
+                qty_pz_sueltas,
+                to_number('0') m3,
+                null uc_granel_flg
+           from (Select cnthst.cntdte Fecha1,
+                        'Auditoria de Conteo' Operacion,
+                        nvl(cnthst.cnt_usr_id, cnthst.mod_usr_id) cnt_usr_id,
+                        to_number('0') qty_piezas_total,
+                        to_number('0') qty_cajas_completas,
+                        to_number('0') qty_pz_sueltas,
+                        cnthst.wh_id,
+                        cnthst.cntbat,
+                        cnthst.cnttyp,
+                        cnthst.stoloc,
+                        cnthst.prt_client_id
+                   from cnthst
+                  where /*cnthst.cntdte between to_date(to_char(sysdate - (1 / 24), 'YYYYMMDDHH24') || '0000', 'YYYYMMDDHH24MISS')
+                    and to_date(to_char(sysdate - (1 / 24), 'YYYYMMDDHH24') || '5959', 'YYYYMMDDHH24MISS')*/
+                    cnthst.cntdte between sysdate -7 and sysdate
+                    and cnthst.cnttyp in ('A', 'AJ')
+                    and cnthst.wh_id in ('JCMT', 'JCUC', 'JCUF')
+                  group by cnthst.cntdte,
+                        'Conteo Ciclico',
+                        nvl(cnthst.cnt_usr_id, cnthst.mod_usr_id),
+                        to_number('0'),
+                        cnthst.wh_id,
+                        cnthst.cntbat,
+                        cnthst.cnttyp,
+                        cnthst.stoloc,
+                        cnthst.prt_client_id)
+          group by Fecha1,
+                nvl(prt_client_id, 'Sin Cliente'),
+                wh_id,
+                operacion,
+                cnt_usr_id,
+                'No Clasifica',
+                qty_piezas_total,
+                qty_cajas_completas,
+                qty_pz_sueltas)
+  group by to_date(to_char(Fecha1, 'YYYYMMDDHH24') || '0000', 'YYYYMMDDHH24MISS'),
+        ack_usr_id,
+        cliente,
+        Operacion,
+        carton,
+        qty_lineas_carton,
+        wh_id,
+        orden,
+        tipo_orden,
+        qty_cajas_completas,
+        qty_pz_sueltas,
+        m3
+ union ALL
+ select count(usuario_creador) Total,
+        to_date(to_char(Fecha1, 'YYYYMMDDHH24') || '0000', 'YYYYMMDDHH24MISS') Fecha1,
+        usuario_creador,
+        client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        (case when client_id = 'C01' THEN 'JCMT'
+              when client_id = 'C02' THEN 'JCMT'
+              when client_id = 'C04' THEN 'JCMT'
+              when client_id = 'C23' THEN 'JCMT'
+              when client_id = 'C24' THEN 'JCMT'
+              when client_id = 'C26' THEN 'JCMT'
+              when client_id = 'C59' THEN 'JCMT'
+              when client_id = 'C07' THEN 'LSCA'
+         end) wh_id,
+        'No Clasifica' orden,
+        'No Clasifica' tipo_orden,
+        qty_piezas_total,
+        qty_cajas_completas,
+        qty_pz_sueltas,
+        to_number('0') m3
+   from (SELECT fecha_creacion,
+                fecha_creacion Fecha1,
+                'Toma Series' Operacion,
+                client_id,
+                to_number('0') qty_piezas_total,
+                to_number('0') qty_cajas_completas,
+                to_number('0') qty_pz_sueltas,
+                usuario_creador
+           FROM vc_serie
+          WHERE to_char(fecha_creacion, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD')
+            and numctl is null
+            and vc_serie.client_id in ('C01', 'C02', 'C04', 'C23', 'C24', 'C26', 'C59', 'C07'))
+  group by to_date(to_char(Fecha1, 'YYYYMMDDHH24') || '0000', 'YYYYMMDDHH24MISS'),
+        operacion,
+        client_id,
+        'No Clasifica',
+        usuario_creador,
+        qty_piezas_total,
+        qty_cajas_completas,
+        qty_pz_sueltas
+ union all
+ select count(usuario_creador) Total,
+        to_date(to_char(Fecha1, 'YYYYMMDDHH24') || '0000', 'YYYYMMDDHH24MISS') Fecha1,
+        usuario_creador,
+        client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        (case when client_id = 'C01' THEN 'JCMT'
+              when client_id = 'C02' THEN 'JCMT'
+              when client_id = 'C04' THEN 'JCMT'
+              when client_id = 'C23' THEN 'JCMT'
+              when client_id = 'C24' THEN 'JCMT'
+              when client_id = 'C26' THEN 'JCMT'
+              when client_id = 'C59' THEN 'JCMT'
+              when client_id = 'C07' THEN 'LSCA'
+         end) wh_id,
+        'No Clasifica' orden,
+        'No Clasifica' tipo_orden,
+        qty_piezas_total,
+        qty_cajas_completas,
+        qty_pz_sueltas,
+        to_number('0') m3
+   from (SELECT fecha_creacion,
+                fecha_creacion Fecha1,
+                'Toma Series y Garantia' Operacion,
+                client_id,
+                to_number('0') qty_piezas_total,
+                to_number('0') qty_cajas_completas,
+                to_number('0') qty_pz_sueltas,
+                usuario_creador
+           FROM vc_serie
+          WHERE to_char(fecha_creacion, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD')
+            and numctl is not null
+            and vc_serie.client_id in ('C01', 'C02', 'C04', 'C23', 'C24', 'C26', 'C59', 'C07'))
+  group by to_date(to_char(Fecha1, 'YYYYMMDDHH24') || '0000', 'YYYYMMDDHH24MISS'),
+        client_id,
+        operacion,
+        'No Clasifica',
+        usuario_creador,
+        qty_piezas_total,
+        qty_cajas_completas,
+        qty_pz_sueltas
+ UNION ALL
+ Select count(distinct (subnum)) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Transferencia de Overpack por Cola' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('CASPCK')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.fr_arecod in ('OSTG')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        ordnum,
+        'No Clasifica',
+        tipo_orden
+ union all
+ Select count(distinct lodnum) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Transferencias a Despacho' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.tostol,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                (select distinct pckwrk.ordnum
+                   from invlod
+                   left
+                   join invsub
+                     on invlod.lodnum = invsub.lodnum
+                   left
+                   join invdtl
+                     on invsub.subnum = invdtl.subnum
+                   left
+                   join pckwrk
+                     on invdtl.wrkref = pckwrk.wrkref
+                    and invdtl.prt_client_id = pckwrk.prt_client_id
+                    and invlod.wh_id = pckwrk.wh_id
+                  where invlod.wh_id = dlytrn.wh_id
+                    and invlod.lodnum = dlytrn.lodnum
+                    and rownum < 2) ordnum,
+                (select distinct dscmst2.lngdsc
+                   from invlod
+                   left
+                   join invsub
+                     on invlod.lodnum = invsub.lodnum
+                   left
+                   join invdtl
+                     on invsub.subnum = invdtl.subnum
+                   left
+                   join pckwrk
+                     on invdtl.wrkref = pckwrk.wrkref
+                    and invdtl.prt_client_id = pckwrk.prt_client_id
+                    and invlod.wh_id = pckwrk.wh_id
+                   left
+                   join ord
+                     on pckwrk.ordnum = ord.ordnum
+                    and pckwrk.wh_id = ord.wh_id
+                    and pckwrk.prt_client_id = ord.client_id
+                   left
+                   join dscmst dscmst2
+                     on dscmst2.colnam = 'ordtyp'
+                    and dscmst2.colval = ord.ordtyp
+                    and dscmst2.locale_id = 'MEXICAN_SPANISH'
+                  where invlod.wh_id = dlytrn.wh_id
+                    and invlod.lodnum = dlytrn.lodnum
+                    and rownum < 2) tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('LD_XFR', 'CS_XFR')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.to_arecod in ('STGDESNF', 'STDESNFP', 'STGDESEM', 'STAGEEMB', 'STAGEEMBMX', 'STAGEEMBAE', 'STGDESNC', 'STGDESNCP', 'STGDES', 'STGDESFR', 'STGDESSE', 'STAGEEMBCA', 'STGDESENVI')
+            and dlytrn.oprcod in ('UTR', 'UCT')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        wh_id,
+        operacion,
+        'No Clasifica',
+        ordnum,
+        tipo_orden
+ union all
+ Select count(distinct lodnum) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Transferencias a Pasillos de empacados' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.tostol,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                (select distinct pckwrk.ordnum
+                   from invlod
+                   left
+                   join invsub
+                     on invlod.lodnum = invsub.lodnum
+                   left
+                   join invdtl
+                     on invsub.subnum = invdtl.subnum
+                   left
+                   join pckwrk
+                     on invdtl.wrkref = pckwrk.wrkref
+                    and invdtl.prt_client_id = pckwrk.prt_client_id
+                    and invlod.wh_id = pckwrk.wh_id
+                  where invlod.wh_id = dlytrn.wh_id
+                    and invlod.lodnum = dlytrn.lodnum
+                    and rownum < 2) ordnum,
+                (select min(dscmst2.lngdsc)
+                   from invlod
+                   left
+                   join invsub
+                     on invlod.lodnum = invsub.lodnum
+                   left
+                   join invdtl
+                     on invsub.subnum = invdtl.subnum
+                   left
+                   join pckwrk
+                     on invdtl.wrkref = pckwrk.wrkref
+                    and invdtl.prt_client_id = pckwrk.prt_client_id
+                    and invlod.wh_id = pckwrk.wh_id
+                   left
+                   join ord
+                     on pckwrk.ordnum = ord.ordnum
+                    and pckwrk.wh_id = ord.wh_id
+                    and pckwrk.prt_client_id = ord.client_id
+                   left
+                   join dscmst dscmst2
+                     on dscmst2.colnam = 'ordtyp'
+                    and dscmst2.colval = ord.ordtyp
+                    and dscmst2.locale_id = 'MEXICAN_SPANISH'
+                  where invlod.wh_id = dlytrn.wh_id
+                    and invlod.lodnum = dlytrn.lodnum) tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('GENMOV', 'CS_XFR', 'LD_XFR')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.to_arecod in ('PRODEMP', 'AGSKPE', 'PROEMPPFI', 'PROEMP', 'AREAPE', 'PPPE', 'PRODESPEMP', 'PRODEMPIN', 'PEMPLOG')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        ordnum,
+        'No Clasifica',
+        tipo_orden
+ UNION ALL
+ select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Lista de Surtido' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('OTRPCK', 'CASPCK', 'PCEPCK')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.fr_arecod not in ('DESURTPAS', 'GSKDES', 'AGSKPDS', 'ABDESUR', 'ABDECF', 'ADDESUR', 'ZOEDESUR', 'ZOEDESURCF', 'AJNJPDS', 'AABAYDES', 'OSTG', 'GRAINGER', 'AJJMEDMEZZ', 'JANSSENMEZ', 'JAULAFP', 'JAULA', 'JAULAAL', 'PACF', 'PACFCONG', 'FRLOG', 'AMBLOG')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        ordnum,
+        'No Clasifica',
+        tipo_orden
+ union all
+ select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Lista de Surtido Mezzanine' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('OTRPCK', 'CASPCK', 'PCEPCK')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.fr_arecod in ('GRAINGER', 'AJJMEDMEZZ', 'JANSSENMEZ', 'JAULAFP', 'JAULA', 'JAULAAL')
+            and dlytrn.fr_arecod not in ('DESURTPAS', 'GSKDES', 'AGSKPDS', 'ABDESUR', 'ABDECF', 'ADDESUR', 'ZOEDESUR', 'ZOEDESURCF', 'AJNJPDS', 'AABAYDES', 'OSTG')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        ordnum,
+        'No Clasifica',
+        tipo_orden
+ union all
+ select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Lista de Surtido Logimat' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('OTRPCK', 'CASPCK', 'PCEPCK')
+            and dlytrn.oprcod = 'UPK'
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.fr_arecod in ('AMBLOG', 'FRLOG')
+            and dlytrn.fr_arecod not in ('DESURTPAS', 'GSKDES', 'AGSKPDS', 'ABDESUR', 'ABDECF', 'ADDESUR', 'ZOEDESUR', 'ZOEDESURCF', 'AJNJPDS', 'AABAYDES', 'OSTG')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        ordnum,
+        'No Clasifica',
+        tipo_orden
+ union all
+ select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Lista de Surtido Cuarto Frio' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('OTRPCK', 'CASPCK', 'PCEPCK')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.fr_arecod in ('PACF', 'PACFCONG')
+            and dlytrn.fr_arecod not in ('DESURTPAS', 'GSKDES', 'AGSKPDS', 'ABDESUR', 'ABDECF', 'ADDESUR', 'ZOEDESUR', 'ZOEDESURCF', 'AJNJPDS', 'AABAYDES', 'OSTG')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        ordnum,
+        'No Clasifica',
+        tipo_orden
+ UNION ALL
+ Select count(distinct (dlt1.to_subnum)) Total,
+        dlt1.Fecha1,
+        dlt1.usr_id,
+        dlt1.prt_client_id,
+        dlt1.Operacion,
+        dlt1.carton,
+        to_number(sum(dlt1.qty_lineas_carton)) qty_lineas_carton,
+        dlt1.wh_id,
+        dlt1.ordnum,
+        dlt1.tipo_orden,
+        sum(dlt1.trnqty) trnqty,
+        SUM(dlt1.Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        sum((ctnmst.ctnlen * nvl(dlt1.vc_pal_hgt, ctnmst.ctnhgt) * ctnmst.ctnwid) / 1000000) m3
+   from (select max(dlytrn.trndte) Fecha1,
+                dlytrn.wh_id,
+                'Empaque' Operacion,
+                dlytrn.prt_client_id,
+                sum(dlytrn.trnqty) trnqty,
+                SUM(trunc(dlytrn.trnqty / prtmst_view.untcas)) Bultos,
+                SUM(mod(dlytrn.trnqty, prtmst_view.untcas)) pz_sueltas,
+                pckwrk.ordnum,
+                pckwrk.ctncod,
+                pckwrk.vc_pal_hgt,
+                to_number(count(dlytrn.dlytrn_id)) qty_lineas_carton,
+                dlytrn.usr_id,
+                dlytrn.to_subnum,
+                dscmst2.lngdsc tipo_orden,
+                dscmst3.lngdsc carton
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join pckwrk
+             on dlytrn.to_subnum = pckwrk.subnum
+            and pckwrk.client_id = dlytrn.prt_client_id
+           left
+           join dscmst dscmst3
+             on dscmst3.colnam = 'ctncod|wh_id'
+            and dscmst3.colval = pckwrk.ctncod || '|' || pckwrk.wh_id
+            and dscmst3.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ord
+             on pckwrk.ordnum = ord.ordnum
+            and pckwrk.wh_id = ord.wh_id
+            and pckwrk.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.movref = 'INTERNAL'
+            AND dlytrn.actcod = 'GENMOV'
+            AND dlytrn.to_arecod = 'OSTG'
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+         --and dlytrn.to_subnum = 'CARTON_00419478'
+
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD')
+          group by dlytrn.wh_id,
+                'Empaque',
+                dlytrn.prt_client_id,
+                pckwrk.ordnum,
+                pckwrk.ctncod,
+                pckwrk.vc_pal_hgt,
+                dlytrn.usr_id,
+                dlytrn.to_subnum,
+                dscmst2.lngdsc,
+                dscmst3.lngdsc) dlt1
+   LEFT
+   JOIN ctnmst
+     ON ctnmst.ctncod = dlt1.ctncod
+    and ctnmst.wh_id = dlt1.wh_id
+  group by dlt1.usr_id,
+        dlt1.Fecha1,
+        dlt1.prt_client_id,
+        dlt1.carton,
+        dlt1.operacion,
+        dlt1.wh_id,
+        dlt1.ordnum,
+        dlt1.tipo_orden
+ union all
+ Select count(distinct (dlt1.to_subnum)) Total,
+        dlt1.Fecha1,
+        dlt1.usr_id,
+        dlt1.prt_client_id,
+        dlt1.Operacion,
+        dlt1.carton,
+        to_number(sum(dlt1.qty_lineas_carton)) qty_lineas_carton,
+        dlt1.wh_id,
+        dlt1.ordnum,
+        dlt1.tipo_orden,
+        sum(dlt1.trnqty) trnqty,
+        SUM(dlt1.Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        sum((ctnmst.ctnlen * nvl(dlt1.vc_pal_hgt, ctnmst.ctnhgt) * ctnmst.ctnwid) / 1000000) m3
+   from (select max(dlytrn.trndte) Fecha1,
+                dlytrn.wh_id,
+                'Empaque_carto' Operacion,
+                dlytrn.prt_client_id,
+                sum(dlytrn.trnqty) trnqty,
+                SUM(trunc(dlytrn.trnqty / prtmst_view.untcas)) Bultos,
+                SUM(mod(dlytrn.trnqty, prtmst_view.untcas)) pz_sueltas,
+                pckwrk.ordnum,
+                pckwrk.ctncod,
+                pckwrk.vc_pal_hgt,
+                to_number(count(dlytrn.dlytrn_id)) qty_lineas_carton,
+                dlytrn.usr_id,
+                dlytrn.to_subnum,
+                dscmst2.lngdsc tipo_orden,
+                dscmst3.lngdsc carton
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join pckwrk
+             on dlytrn.to_subnum = pckwrk.subnum
+            and pckwrk.client_id = dlytrn.prt_client_id
+           left
+           join dscmst dscmst3
+             on dscmst3.colnam = 'ctncod|wh_id'
+            and dscmst3.colval = pckwrk.ctncod || '|' || pckwrk.wh_id
+            and dscmst3.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ord
+             on pckwrk.ordnum = ord.ordnum
+            and pckwrk.wh_id = ord.wh_id
+            and pckwrk.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.movref = 'INTERNAL'
+            AND dlytrn.actcod in ('GENMOV', 'LD_XFR')
+            AND dlytrn.to_arecod IN ('ACKITC', 'ACKIT', 'ACKITJCMT', 'ACKITLSCO', 'CARTENV')
+            AND dlytrn.fr_arecod IN ('ACKITC', 'ACKIT', 'ACKITJCMT', 'ACKITLSCO', 'CARTENV')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+         --and dlytrn.usr_id = 'EHURTADO'
+         --AND dlytrn.to_subnum = 'CARTON_00383847'
+
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD')
+          group by dlytrn.wh_id,
+                'Empaque_carto',
+                dlytrn.prt_client_id,
+                pckwrk.ordnum,
+                pckwrk.ctncod,
+                pckwrk.vc_pal_hgt,
+                dlytrn.usr_id,
+                dlytrn.to_subnum,
+                dscmst2.lngdsc,
+                dscmst3.lngdsc) dlt1
+   LEFT
+   JOIN ctnmst
+     ON ctnmst.ctncod = dlt1.ctncod
+    and ctnmst.wh_id = dlt1.wh_id
+  group by dlt1.usr_id,
+        dlt1.Fecha1,
+        dlt1.prt_client_id,
+        dlt1.carton,
+        dlt1.operacion,
+        dlt1.wh_id,
+        dlt1.ordnum,
+        dlt1.tipo_orden
+ UNION ALL
+ Select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Surtido De Pallet' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('PALPCK')
+            and dlytrn.oprcod in ('PCK', 'LPCK')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.fr_arecod not in ('DESURTPAS', 'GSKDES', 'AGSKPDS', 'ABDESUR', 'ABDECF', 'ADDESUR', 'ZOEDESUR', 'ZOEDESURCF', 'AJNJPDS', 'AABAYDES', 'JANSSENMEZ', 'AJJMEDMEZZ', 'JAULAAL', 'JAULA', 'JAULAFP', 'PACF', 'PACFCONG', 'FRLOG', 'AMBLOG')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        wh_id,
+        operacion,
+        'No Clasifica',
+        ordnum,
+        tipo_orden
+ union all
+ Select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Surtido De Pallet Mezzanine' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('PALPCK')
+            and dlytrn.oprcod in ('PCK', 'LPCK')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.fr_arecod in ('JANSSENMEZ', 'AJJMEDMEZZ', 'JAULAAL', 'JAULA', 'JAULAFP')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        wh_id,
+        operacion,
+        'No Clasifica',
+        ordnum,
+        tipo_orden
+ union all
+ Select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Surtido De Pallet Cuarto Frio' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('PALPCK')
+            and dlytrn.oprcod in ('PCK', 'LPCK')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.fr_arecod in ('PACF', 'PACFCONG')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        wh_id,
+        operacion,
+        'No Clasifica',
+        ordnum,
+        tipo_orden
+ union all
+ Select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Surtido De Pallet Logimat' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('PALPCK')
+            and dlytrn.oprcod in ('UPK')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.fr_arecod in ('AMBLOG', 'FRLOG')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        wh_id,
+        operacion,
+        'No Clasifica',
+        ordnum,
+        tipo_orden
+ UNION ALL
+ Select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Reabasto De Pallet' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('PALPCK')
+            and dlytrn.oprcod in ('PRP')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.fr_arecod not in ('DESURTPAS', 'GSKDES', 'AGSKPDS', 'ABDESUR', 'ABDECF', 'ADDESUR', 'ZOEDESUR', 'ZOEDESURCF', 'AJNJPDS', 'AABAYDES')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        'No Clasifica',
+        ordnum,
+        tipo_orden
+ UNION ALL
+ Select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Transferencias de Nivel' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('PALPCK')
+            and dlytrn.oprcod in ('TRN')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.fr_arecod not in ('DESURTPAS', 'GSKDES', 'AGSKPDS', 'ABDESUR', 'ABDECF', 'ADDESUR', 'ZOEDESUR', 'ZOEDESURCF', 'AJNJPDS', 'AABAYDES')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        'No Clasifica',
+        ordnum,
+        tipo_orden
+ UNION ALL
+ Select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Transferencias de Segregacion S/M' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('CASPCK')
+            and dlytrn.oprcod in ('TRN')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.fr_arecod not in ('DESURTPAS', 'GSKDES', 'AGSKPDS', 'ABDESUR', 'ABDECF', 'ADDESUR', 'ZOEDESUR', 'ZOEDESURCF', 'AJNJPDS', 'AABAYDES')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        'No Clasifica',
+        ordnum,
+        tipo_orden
+ UNION ALL
+ Select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Recibo' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('IDNTFY')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.oprcod = 'UID'
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        'No Clasifica',
+        ordnum,
+        tipo_orden
+ UNION ALL
+ Select count(distinct lodnum) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Despacho' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                (select distinct pckwrk.ordnum
+                   from invlod
+                   left
+                   join invsub
+                     on invlod.lodnum = invsub.lodnum
+                   left
+                   join invdtl
+                     on invsub.subnum = invdtl.subnum
+                   left
+                   join pckwrk
+                     on invdtl.wrkref = pckwrk.wrkref
+                    and invdtl.prt_client_id = pckwrk.prt_client_id
+                    and invlod.wh_id = pckwrk.wh_id
+                  where invlod.wh_id = dlytrn.wh_id
+                    and invlod.lodnum = dlytrn.lodnum
+                    and rownum < 2) ordnum,
+                (select distinct dscmst2.lngdsc
+                   from invlod
+                   left
+                   join invsub
+                     on invlod.lodnum = invsub.lodnum
+                   left
+                   join invdtl
+                     on invsub.subnum = invdtl.subnum
+                   left
+                   join pckwrk
+                     on invdtl.wrkref = pckwrk.wrkref
+                    and invdtl.prt_client_id = pckwrk.prt_client_id
+                    and invlod.wh_id = pckwrk.wh_id
+                   left
+                   join ord
+                     on pckwrk.ordnum = ord.ordnum
+                    and pckwrk.wh_id = ord.wh_id
+                    and pckwrk.prt_client_id = ord.client_id
+                   left
+                   join dscmst dscmst2
+                     on dscmst2.colnam = 'ordtyp'
+                    and dscmst2.colval = ord.ordtyp
+                    and dscmst2.locale_id = 'MEXICAN_SPANISH'
+                  where invlod.wh_id = dlytrn.wh_id
+                    and invlod.lodnum = dlytrn.lodnum
+                    and rownum < 2) tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+          where dlytrn.actcod in ('SHIPLOAD')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.oprcod = 'LOD'
+         --and dlytrn.dlytrn_id = '00000HQZ30'
+
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        'No Clasifica',
+        ordnum,
+        tipo_orden
+ UNION ALL
+ Select count(distinct lodnum) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Almacenaje Dirigido Cola' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.tostol,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.oprcod IS NULL
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.to_arecod not in ('STGDES', 'STGDESSE', 'STAGEEMB', 'STAGEEMBMX', 'STAGEEMBAE', 'AGSKPE', 'AJNJPDS', 'GSKDES', 'AGSKPDS', 'DESURTPAS', 'DESURTPIE', 'DESURTSEN', 'STGEMPCF', 'STGEMP', 'AAEMPBAY', 'EMPAQUE', 'EMPAQ', 'ACKITC', 'STEMPTERU', 'AREPACKC', 'AABAYDES', 'STGDESFR', 'STGDESNC', 'STLP', 'AAEMPBAYFR', 'ADASPEMP', 'ACPFEMPC', 'ACZOEMPC', 'ABEMPPUBLI', 'EMPMSDINCF', 'EMPZOECF', 'EMPMSDINSE', 'AKIT', 'STGDESNF', 'STGDESEM', 'ACKITJCMT', 'ACKITLSCO', 'CONSOLLSCO', 'CARTENV')
+            and dlytrn.actcod = 'PUT_DRCT_arios'
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD')
+            AND dlytrn.fr_arecod LIKE 'RDT%')
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        'No Clasifica',
+        wh_id,
+        ordnum,
+        tipo_orden
+ UNION ALL
+ Select count(distinct lodnum) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Transferencia de Carga' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('LD_XFR')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.to_arecod not in ('AABAYDES', 'AAEMPBAY', 'AAEMPBAYFR', 'ABEMPPUBLI', 'ACKITC', 'ACKIT', 'ACPFEMPC', 'ACZOEMPC', 'ADASPEMP', 'AGSKPDS', 'AGSKPE', 'AJNJPDS', 'AKIT', 'AREPACKC', 'AREPACK', 'DESURTPIE', 'DESURTSEN', 'EMPAQ', 'EMPAQUE', 'EMPMSDINCF', 'EMPMSDINSE', 'EMPZOECF', 'GSKDES', 'PRODEMP', 'PROEMP', 'PROEMPPFI', 'STAGEEMB', 'STAGEEMBAE', 'STAGEEMBMX', 'STEMPTERU', 'STGDESEM', 'STGDESFR', 'STGDESNC', 'STGDESNCP', 'STGDESNF', 'STGDESSE', 'STGEMP', 'STGEMPCF', 'STLP', 'STGDES', 'AREAPE', 'CONSOLIDAC', 'CONSOLIBUL', 'ACKITJCMT', 'STAGEEMBCA', 'ACKITLSCO', 'CONSOLLSCO', 'AJJMEDMEZZ', 'JANSSENMEZ', 'JAULAAL', 'JAULA', 'JAULAFP', 'BAYPAD', 'CARTENV', 'PPPE', 'PRODESPEMP', 'STGDESENVI', 'PRODEMPIN', 'PEMPLOG', 'STDESNFP', 'STGDESENVI')
+            and dlytrn.oprcod = 'UTR'
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        operacion,
+        Fecha1,
+        wh_id,
+        ordnum,
+        'No Clasifica',
+        tipo_orden
+ UNION ALL
+ Select count(distinct lodnum) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Transferencia de Dirigida' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('LD_MENUBT')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.to_arecod not in ('AABAYDES', 'AAEMPBAY', 'AAEMPBAYFR', 'ABEMPPUBLI', 'ACKITC', 'ACKIT', 'ACPFEMPC', 'ACZOEMPC', 'ADASPEMP', 'AGSKPDS', 'AGSKPE', 'AJNJPDS', 'AKIT', 'AREPACKC', 'AREPACK', 'DESURTPIE', 'DESURTSEN', 'EMPAQ', 'EMPAQUE', 'EMPMSDINCF', 'EMPMSDINSE', 'EMPZOECF', 'GSKDES', 'PRODEMP', 'PROEMP', 'PROEMPPFI', 'STAGEEMB', 'STAGEEMBAE', 'STAGEEMBMX', 'STEMPTERU', 'STGDESEM', 'STGDESFR', 'STGDESNC', 'STGDESNCP', 'STGDESNF', 'STGDESSE', 'STGEMP', 'STGEMPCF', 'STLP', 'STGDES', 'AREAPE', 'CONSOLIDAC', 'CONSOLIBUL', 'ACKITJCMT', 'STAGEEMBCA', 'ACKITLSCO', 'CONSOLLSCO', 'AJJMEDMEZZ', 'JANSSENMEZ', 'JAULAAL', 'JAULA', 'JAULAFP', 'BAYPAD', 'CARTENV', 'PPPE', 'PRODESPEMP', 'STGDESENVI', 'PRODEMPIN', 'PEMPLOG', 'STDESNFP', 'STGDESENVI')
+         --and dlytrn.oprcod = 'UTR'
+
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        operacion,
+        Fecha1,
+        wh_id,
+        ordnum,
+        'No Clasifica',
+        tipo_orden
+ union all
+ Select count(distinct lodnum) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Transferencia de Carga Mezzanine' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('LD_XFR')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.to_arecod in ('AJJMEDMEZZ', 'JANSSENMEZ', 'JAULAAL', 'JAULA', 'JAULAFP')
+            and dlytrn.oprcod = 'UTR'
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        operacion,
+        Fecha1,
+        wh_id,
+        ordnum,
+        'No Clasifica',
+        tipo_orden
+ union all
+ Select count(distinct lodnum) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Transferencia de Kitting' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.fr_arecod in ('RDTS000006', 'RDTS000023', 'RDTS000052')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.to_arecod in ('LKITTIN', 'STLP', 'LKIT', 'LKITPP')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        operacion,
+        Fecha1,
+        wh_id,
+        ordnum,
+        'No Clasifica',
+        tipo_orden
+ union all
+ select total,
+        fecha1,
+        nvl(user_cargue, mod_usr_id) mod_usr_id,
+        cliente,
+        operacion,
+        carton,
+        qty_lineas_carton,
+        wh_id,
+        orden,
+        tipo_orden,
+        qty_piezas_total,
+        qty_cajas_completas,
+        qty_pz_sueltas,
+        m3
+   from (select count(trlract.trlr_id) total,
+                max(trlract.trndte) Fecha1,
+                trlract.mod_usr_id,
+                'Sin Cliente' cliente,
+                'Cierre de Camion' Operacion,
+                'No Clasifica' carton,
+                to_number('0') qty_lineas_carton,
+                trlract.wh_id,
+                trlract.trlr_cod orden,
+                trlr.trlr_typ tipo_orden,
+                to_number('0') qty_piezas_total,
+                to_number('0') qty_cajas_completas,
+                to_number('0') qty_pz_sueltas,
+                to_number('0') m3,
+                (select dlytrn.ins_user_id
+                   from dlytrn
+                  where dlytrn.wh_id = trlract.wh_id
+                    and dlytrn.tostol = trlract.trlr_id
+                    and dlytrn.actcod = 'SHIPLOAD'
+                    AND rownum < 2) user_cargue
+           from trlract
+           left
+           join trlr
+             on trlract.trlr_id = trlr.trlr_id
+          WHERE to_char(trlract.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD')
+            AND trlract.actcod = 'TDSP'
+            and trlract.trlr_cod = 'SHIP'
+          GROUP BY trlract.trlr_id,
+                trlract.trlr_cod,
+                trlract.wh_id,
+                trlract.mod_usr_id,
+                trlr.trlr_typ)
+ UNION ALL
+ select total,
+        fecha1,
+        nvl(user_cargue, mod_usr_id) mod_usr_id,
+        cliente,
+        operacion,
+        carton,
+        qty_lineas_carton,
+        wh_id,
+        orden,
+        tipo_orden,
+        qty_piezas_total,
+        qty_cajas_completas,
+        qty_pz_sueltas,
+        m3
+   from (select count(trlract.trlr_id) total,
+                trlract.trknum,
+                max(trlract.trndte) Fecha1,
+                trlract.mod_usr_id,
+                'Sin Cliente' cliente,
+                'Cierre de Camion' Operacion,
+                'No Clasifica' carton,
+                to_number('0') qty_lineas_carton,
+                trlract.wh_id,
+                trlract.trlr_cod orden,
+                trlr.trlr_typ tipo_orden,
+                to_number('0') qty_piezas_total,
+                to_number('0') qty_cajas_completas,
+                to_number('0') qty_pz_sueltas,
+                to_number('0') m3,
+                (select dlytrn.ins_user_id
+                   from dlytrn
+                  where dlytrn.wh_id = trlract.wh_id
+                    and dlytrn.tostol = trlract.trknum
+                    and dlytrn.actcod = 'IDNTFY'
+                    AND rownum < 2) user_cargue
+           from trlract
+           left
+           join trlr
+             on trlract.trlr_id = trlr.trlr_id
+          WHERE to_char(trlract.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD')
+            AND trlract.actcod = 'TDSP'
+            and trlract.trlr_cod = 'RCV'
+          GROUP BY trlract.trlr_id,
+                trlract.trknum,
+                trlract.trlr_cod,
+                trlract.wh_id,
+                trlract.mod_usr_id,
+                trlr.trlr_typ)
+ UNION ALL
+ select COUNT(ord.ordnum) Total,
+        ord.adddte Fecha1,
+        csr_nam usr_id,
+        client_id,
+        'SuperMarket' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        ord.wh_id,
+        ord.ordnum orden,
+        'No Clasifica' tipo_orden,
+        to_number('0') qty_piezas_total,
+        to_number('0') qty_cajas_completas,
+        to_number('0') qty_pz_sueltas,
+        to_number('0') m3
+   from ord
+  where to_char(ord.adddte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+    and to_char(sysdate, 'YYYYMMDD')
+    and client_id = 'C83'
+    AND ordnum LIKE 'ORD%'
+  group by ord.adddte,
+        csr_nam,
+        client_id,
+        ord.ordnum,
+        ord.wh_id
+ union all
+ Select count(distinct lodnum) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Consolidacion Empacados' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.oprcod = 'UTR'
+            and dlytrn.actcod = 'LD_XFR'
+            and dlytrn.subnum like 'CARTO%'
+            AND dlytrn.to_arecod = 'CONSOLIBUL'
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        operacion,
+        Fecha1,
+        wh_id,
+        ordnum,
+        'No Clasifica',
+        tipo_orden
+ UNION ALL
+ Select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Recibo IOL' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('IDNTFY')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.oprcod = 'INVADJ'
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        'No Clasifica',
+        ordnum,
+        tipo_orden
+ union all
+ Select count(usr_id) Total,
+        Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Transferencia a Despacho Cola' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.tostol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod in ('GENMOV')
+            and dlytrn.oprcod in ('TRN')
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and dlytrn.to_arecod in ('STAGEEMB', 'STAGEEMBAE', 'STAGEEMBCA', 'STAGEEMBCO', 'STAGEEMBMX', 'STDESNFP', 'STGDES', 'STGDESCROS', 'STGDESEM', 'STGDESENVI', 'STGDESFR', 'STGDESNC', 'STGDESNCP', 'STGDESNF', 'STGDESPCA', 'STGDESPCS', 'STGDESPEMP', 'STGDESSE', 'STGDESENVI')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        Fecha1,
+        operacion,
+        wh_id,
+        'No Clasifica',
+        ordnum,
+        tipo_orden
+ union
+ Select count(distinct (lodnum)) Total,
+        to_date(to_char(Fecha1, 'YYYYMMDDHH24') || '0000', 'YYYYMMDDHH24MISS') Fecha1,
+        usr_id,
+        prt_client_id,
+        Operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(Bultos) Bultos,
+        sum(pz_sueltas) pz_sueltas,
+        to_number('0') m3
+   from (select to_date(dlytrn.trndte) Fecha,
+                dlytrn.trndte Fecha1,
+                dlytrn.oprcod,
+                dlytrn.wh_id,
+                'Impresion de Guia' Operacion,
+                dlytrn.actcod,
+                dscmst.lngdsc Tipo_Operacion,
+                dlytrn.prtnum,
+                prtdsc.lngdsc,
+                dlytrn.prt_client_id,
+                dlytrn.orgcod,
+                dlytrn.trnqty,
+                trunc(dlytrn.trnqty / prtmst_view.untcas) Bultos,
+                mod(dlytrn.trnqty, prtmst_view.untcas) pz_sueltas,
+                dlytrn.frstol,
+                dlytrn.ordnum,
+                dlytrn.usr_id,
+                dlytrn.ins_user_id,
+                round((((ftpmst.caslen * ftpmst.caswid * ftpmst.cashgt) *(dlytrn.trnqty / prtmst_view.untcas) / 1000000)), 4) M3,
+                prtmst_view.ftpcod,
+                prtmst_view.untcas,
+                dlytrn.lodnum,
+                dlytrn.to_lodnum,
+                dlytrn.subnum,
+                dlytrn.dtlnum,
+                dlytrn.to_subnum,
+                dlytrn.to_dtlnum,
+                dlytrn.lotnum,
+                dlytrn.ship_id,
+                dlytrn.dlytrn_id,
+                dscmst2.lngdsc tipo_orden
+           from dlytrn
+           left
+           join prtmst_view
+             on (dlytrn.prtnum = prtmst_view.prtnum)
+            and dlytrn.prt_client_id = prtmst_view.prt_client_id
+            and dlytrn.wh_id = prtmst_view.wh_id_tmpl
+           LEFT
+           JOIN prtdsc
+             on prtdsc.colnam = 'prtnum|prt_client_id|wh_id_tmpl'
+            and prtdsc.colval = nvl(prtmst_view.prtnum, rtrim(' ')) || '|' || nvl(prtmst_view.prt_client_id, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and prtdsc.locale_id = 'MEXICAN_SPANISH'
+           left
+           join dscmst
+             on dscmst.colnam = 'oprcod|wh_id_tmpl'
+            and dscmst.colval = nvl(dlytrn.oprcod, rtrim(' ')) || '|' || prtmst_view.wh_id_tmpl
+            and dscmst.locale_id = 'MEXICAN_SPANISH'
+           left
+           join ftpmst
+             on (prtmst_view.ftpcod = ftpmst.ftpcod)
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.wh_id = ord.wh_id
+            and dlytrn.prt_client_id = ord.client_id
+           left
+           join dscmst dscmst2
+             on dscmst2.colnam = 'ordtyp'
+            and dscmst2.colval = ord.ordtyp
+            and dscmst2.locale_id = 'MEXICAN_SPANISH'
+          where dlytrn.actcod = 'PRINT-GUIA-LABEL'
+            and dlytrn.wh_id in ('JCMT', 'JCUC', 'JCUF')
+            and to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - 7, 'YYYYMMDD')
+            and to_char(sysdate, 'YYYYMMDD'))
+  group by usr_id,
+        prt_client_id,
+        to_date(to_char(Fecha1, 'YYYYMMDDHH24') || '0000', 'YYYYMMDDHH24MISS'),
+        operacion,
+        wh_id,
+        ordnum,
+        'No Clasifica',
+        tipo_orden
+/
