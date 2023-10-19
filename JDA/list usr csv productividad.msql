@@ -1,0 +1,1235 @@
+if (@tipo = 'HISTORIA')
+{
+    remove file
+     where filename = '/mnt/d1/jda/wmsjcainprd/les/files/reportsjcainpesados/BaseProductividadPasada.csv' catch(@?);
+    publish data
+     where dias_inicial = 40
+       and dias_final = 1
+       and filnam = 'BaseProductividadPasada.csv'
+       and path1 = '/mnt/d1/jda/wmsjcainprd/les/files/reportsjcainpesados'
+}
+else
+{
+    remove file
+     where filename = '/mnt/d1/jda/wmsjcainprd/les/files/reportsjcain/BaseProductividadDiaria.csv' catch(@?);
+    publish data
+     where dias_inicial = 0
+       and dias_final = 0
+       and filnam = 'BaseProductividadDiaria.csv'
+       and path1 = '/mnt/d1/jda/wmsjcainprd/les/files/reportsjcain'
+}
+|
+[select count(distinct nvl(cnthst.cnt_usr_id, cnthst.mod_usr_id)) total,
+        to_char(cnthst.cntdte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        nvl(cnthst.cnt_usr_id, cnthst.mod_usr_id) usr_id,
+        nvl(cnthst.prt_client_id, 'Sin Cliente') prt_client_id,
+        dscmst.lngdsc operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        cnthst.wh_id,
+        'No Clasifica' ordnum,
+        'Tipo de Orden' tipo_orden,
+        SUM(cnthst.cntqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from cnthst
+   left
+   join dscmst
+     on dscmst.colnam = 'cnttyp'
+    and dscmst.locale_id = 'US_ENGLISH'
+    and dscmst.colval = cnthst.cnttyp
+   left
+   join locmst
+     on cnthst.stoloc = locmst.stoloc
+    and cnthst.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+  where to_char(cnthst.cntdte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+  group by to_char(cnthst.cntdte, 'MM/DD/YYYY HH24:MI:SS'),
+        nvl(cnthst.cnt_usr_id, cnthst.mod_usr_id),
+        cnthst.wh_id,
+        dscmst.lngdsc,
+        locmst.arecod,
+        cnthst.prt_client_id,
+        sto_zone.sto_zone_id
+ union
+ select count(distinct nvl(cntwrk.cnt_usr_id, cntwrk.mod_usr_id)) total,
+        to_char(cntwrk.cntdte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        nvl(cntwrk.cnt_usr_id, cntwrk.mod_usr_id) usr_id,
+        nvl(cntwrk.prt_client_id, 'Sin Cliente') prt_client_id,
+        dscmst.lngdsc operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        cntwrk.wh_id,
+        'No Clasifica' ordnum,
+        'Tipo de Orden' tipo_orden,
+        SUM(cntwrk.cntqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from cntwrk
+   left
+   join dscmst
+     on dscmst.colnam = 'cnttyp'
+    and dscmst.locale_id = 'US_ENGLISH'
+    and dscmst.colval = cntwrk.cnttyp
+   left
+   join locmst
+     on cntwrk.stoloc = locmst.stoloc
+    and cntwrk.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+  where to_char(cntwrk.cntdte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+ --and cntwrk.stoloc = 'A-04-01-B4'
+
+  group by to_char(cntwrk.cntdte, 'MM/DD/YYYY HH24:MI:SS'),
+        nvl(cntwrk.cnt_usr_id, cntwrk.mod_usr_id),
+        cntwrk.wh_id,
+        dscmst.lngdsc,
+        locmst.arecod,
+        cntwrk.prt_client_id,
+        sto_zone.sto_zone_id
+ union
+ select count(distinct dlytrn.usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Recibo' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        trunc(sum(dlytrn.trnqty / prtftp_dtl.untqty)) Bultos,
+        sum(mod(dlytrn.trnqty, prtftp_dtl.untqty)) pz_sueltas,
+        sum(dlytrn.trnqty *((prtftp_dtl.len *prtftp_dtl.wid * prtftp_dtl.hgt) / 1000000)) m3,
+        'No Clasifica' arecod,
+        0 sto_zone_id,
+        prtmst.prtfam familia,
+        prtmst.uc_dificultad
+   from dlytrn
+   left
+   join prtmst
+     on dlytrn.prtnum = prtmst.prtnum
+    and dlytrn.prt_client_id = prtmst.prt_client_id
+    and dlytrn.wh_id = prtmst.wh_id_tmpl
+   LEFT
+   JOIN prtftp
+     ON prtftp.prtnum = prtmst.prtnum
+    AND prtftp.prt_client_id = prtmst.prt_client_id
+    and prtftp.wh_id = prtmst.wh_id_tmpl
+    AND prtftp.defftp_flg = 1
+   LEFT
+   JOIN prtftp_dtl
+     ON prtftp.prtnum = prtftp_dtl.prtnum
+    AND prtftp.ftpcod = prtftp_dtl.ftpcod
+    and prtftp.wh_id = prtftp_dtl.wh_id
+    AND prtftp_dtl.uomcod = 'CJ'
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'IDNTFY'
+    and dlytrn.oprcod = 'UID'
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        prtmst.prtfam,
+        prtmst.uc_dificultad
+ union
+ select count(distinct usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        usr_id,
+        prt_client_id,
+        'Transferencias a Despacho' operacion,
+        (select uc_log_cambios_bultos_emp.new_carton
+           from uc_log_cambios_bultos_emp
+          WHERE uc_log_cambios_bultos_emp.tipo = 'PKOCLOSE'
+            and uc_log_cambios_bultos_emp.subnum = dlytrn.subnum
+            and uc_log_cambios_bultos_emp.wh_id = dlytrn.wh_id
+            and uc_log_cambios_bultos_emp.client_id = dlytrn.prt_client_id
+            and rownum < 2) carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        'No Clasifica' arecod,
+        0 sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'FL_XFR'
+    and dlytrn.oprcod = 'UTR'
+    and dlytrn.to_arecod in ('STGDES', 'FASTGDES', 'LSSTGDES', 'LSSTGDESFR', 'LSSOSTGDES', 'CISTGDES', 'PREDES')
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        usr_id,
+        prt_client_id,
+        wh_id,
+        ordnum,
+        dlytrn.subnum
+ union
+ select count(distinct usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        usr_id,
+        prt_client_id,
+        'Despacho' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        (select uc_log_cambios_bultos_emp.ordtyp
+           from uc_log_cambios_bultos_emp
+          WHERE uc_log_cambios_bultos_emp.tipo = 'PKOCLOSE'
+            and uc_log_cambios_bultos_emp.subnum = dlytrn.subnum
+            and uc_log_cambios_bultos_emp.wh_id = dlytrn.wh_id
+            and uc_log_cambios_bultos_emp.client_id = dlytrn.prt_client_id
+            and rownum < 2) tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        'No Clasifica' arecod,
+        0 sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'TRLR_LOAD'
+    and dlytrn.to_arecod = 'SHIP'
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        usr_id,
+        prt_client_id,
+        subnum,
+        wh_id,
+        ordnum
+ union
+ select count(distinct dlytrn.usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Transferencias' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        trunc(sum(dlytrn.trnqty / prtftp_dtl.untqty)) Bultos,
+        sum(mod(dlytrn.trnqty, prtftp_dtl.untqty)) pz_sueltas,
+        sum(dlytrn.trnqty *((prtftp_dtl.len *prtftp_dtl.wid * prtftp_dtl.hgt) / 1000000)) m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join locmst
+     on dlytrn.tostol = locmst.stoloc
+    and dlytrn.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+   LEFT
+   JOIN prtftp
+     ON prtftp.prtnum = dlytrn.prtnum
+    AND prtftp.prt_client_id = dlytrn.prt_client_id
+    and prtftp.wh_id = dlytrn.wh_id
+    AND prtftp.defftp_flg = 1
+   LEFT
+   JOIN prtftp_dtl
+     ON prtftp.prtnum = prtftp_dtl.prtnum
+    AND prtftp.ftpcod = prtftp_dtl.ftpcod
+    and prtftp.wh_id = prtftp_dtl.wh_id
+    AND prtftp_dtl.uomcod = 'CJ'
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'FL_XFR'
+    and dlytrn.oprcod = 'UTR'
+    and dlytrn.to_arecod in ('ALMCUA', 'CIALMCUA', 'FAALCUA', 'MEZZA_HHP', 'MEZZA_RACK', 'CIALMCON', 'FAALSCRAP', 'ALMTA9065', 'CIALMTA', 'FAALMTA', 'ALMTA', 'CIALMTC', 'FAALMTC', 'CIALMTR', 'FAALMTR', 'JCALMTA', 'LSALMCUA', 'LSALMTA', 'LSALMTAFR', 'LSLPALMTA', 'LSSOALMCUA', 'LSSOALMTA', 'MEZZA_DG', 'FAALMPC', 'FALMINSUMO', 'CIALMLOG', 'CIALMMATPR', 'CIALMMATPA', 'FAPDCP')
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        locmst.arecod,
+        sto_zone.sto_zone_id
+ union
+ select count(distinct dlytrn.usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Transferencias Pre Acondicionamiento' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        trunc(sum(dlytrn.trnqty / prtftp_dtl.untqty)) Bultos,
+        sum(mod(dlytrn.trnqty, prtftp_dtl.untqty)) pz_sueltas,
+        sum(dlytrn.trnqty *((prtftp_dtl.len *prtftp_dtl.wid * prtftp_dtl.hgt) / 1000000)) m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join locmst
+     on dlytrn.tostol = locmst.stoloc
+    and dlytrn.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+   LEFT
+   JOIN prtftp
+     ON prtftp.prtnum = dlytrn.prtnum
+    AND prtftp.prt_client_id = dlytrn.prt_client_id
+    and prtftp.wh_id = dlytrn.wh_id
+    AND prtftp.defftp_flg = 1
+   LEFT
+   JOIN prtftp_dtl
+     ON prtftp.prtnum = prtftp_dtl.prtnum
+    AND prtftp.ftpcod = prtftp_dtl.ftpcod
+    and prtftp.wh_id = prtftp_dtl.wh_id
+    AND prtftp_dtl.uomcod = 'CJ'
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'FL_XFR'
+    and dlytrn.oprcod = 'UTR'
+    and dlytrn.to_arecod in ('CIPREACOND')
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        locmst.arecod,
+        sto_zone.sto_zone_id
+ union
+ select count(distinct dlytrn.usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Transferencia de Dirigida' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join locmst
+     on dlytrn.tostol = locmst.stoloc
+    and dlytrn.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'TR_DIR'
+    and dlytrn.oprcod = 'UTR'
+    and dlytrn.to_arecod in ('ALMCUA', 'CIALMCUA', 'FAALCUA', 'MEZZA_HHP', 'MEZZA_RACK', 'CIALMCON', 'FAALSCRAP', 'ALMTA9065', 'CIALMTA', 'FAALMTA', 'ALMTA', 'CIALMTC', 'FAALMTC', 'CIALMTR', 'FAALMTR', 'JCALMTA', 'LSALMCUA', 'LSALMTA', 'LSALMTAFR', 'LSLPALMTA', 'LSSOALMCUA', 'LSSOALMTA', 'MEZZA_DG', 'FAALMPC', 'FALMINSUMO', 'CIALMLOG', 'CIALMMATPR', 'CIALMMATPA', 'FAPDCP')
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        locmst.arecod,
+        sto_zone.sto_zone_id
+ union
+ select count(distinct dlytrn.usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Transferencias Part Inv' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join locmst
+     on dlytrn.tostol = locmst.stoloc
+    and dlytrn.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'PL_XFR'
+    and dlytrn.oprcod = 'UTR'
+    and dlytrn.to_arecod in ('ALMCUA', 'CIALMCUA', 'FAALCUA', 'MEZZA_HHP', 'MEZZA_RACK', 'CIALMCON', 'FAALSCRAP', 'ALMTA9065', 'CIALMTA', 'FAALMTA', 'ALMTA', 'CIALMTC', 'FAALMTC', 'CIALMTR', 'FAALMTR', 'JCALMTA', 'LSALMCUA', 'LSALMTA', 'LSALMTAFR', 'LSLPALMTA', 'LSSOALMCUA', 'LSSOALMTA', 'MEZZA_DG', 'FAALMPC', 'FALMINSUMO', 'CIALMLOG', 'CIALMMATPR', 'CIALMMATPA', 'FAPDCP')
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        locmst.arecod,
+        sto_zone.sto_zone_id
+ union
+ select count(distinct dlytrn.usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Transferencias a Pasillos de Empacados' operacion,
+        (select uc_log_cambios_bultos_emp.new_carton
+           from uc_log_cambios_bultos_emp
+          WHERE uc_log_cambios_bultos_emp.tipo = 'PKOCLOSE'
+            and uc_log_cambios_bultos_emp.subnum = dlytrn.subnum
+            and uc_log_cambios_bultos_emp.wh_id = dlytrn.wh_id
+            and uc_log_cambios_bultos_emp.client_id = dlytrn.prt_client_id
+            and rownum < 2) carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join locmst
+     on dlytrn.tostol = locmst.stoloc
+    and dlytrn.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'FL_XFR'
+    and dlytrn.oprcod = 'UTR'
+    and dlytrn.to_arecod in ('CIPEDEMP', 'LSPEDEMP', 'LSSOPEDEMP', 'FAPEDEMP', 'PEDEMP')
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        dlytrn.subnum
+ union
+ select count(distinct dlytrn.usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Transferencia de Kitting' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join locmst
+     on dlytrn.tostol = locmst.stoloc
+    and dlytrn.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'FL_XFR'
+    and dlytrn.oprcod = 'UTR'
+    and dlytrn.to_arecod in ('CIKITS', 'LSSOKITS', 'FAKITS')
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        locmst.arecod,
+        sto_zone.sto_zone_id
+ union
+ select count(distinct dlytrn.usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Surtido De Pallet' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        ord.ordtyp tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        trunc(sum(dlytrn.trnqty / prtftp_dtl.untqty)) Bultos,
+        sum(mod(dlytrn.trnqty, prtftp_dtl.untqty)) pz_sueltas,
+        sum(dlytrn.trnqty *((prtftp_dtl.len *prtftp_dtl.wid * prtftp_dtl.hgt) / 1000000)) m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join locmst
+     on dlytrn.frstol = locmst.stoloc
+    and dlytrn.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+   LEFT
+   JOIN prtftp
+     ON prtftp.prtnum = dlytrn.prtnum
+    AND prtftp.prt_client_id = dlytrn.prt_client_id
+    and prtftp.wh_id = dlytrn.wh_id
+    AND prtftp.defftp_flg = 1
+   LEFT
+   JOIN prtftp_dtl
+     ON prtftp.prtnum = prtftp_dtl.prtnum
+    AND prtftp.ftpcod = prtftp_dtl.ftpcod
+    and prtftp.wh_id = prtftp_dtl.wh_id
+    AND prtftp_dtl.uomcod = 'CJ'
+   left
+   join ord
+     on dlytrn.ordnum = ord.ordnum
+    and dlytrn.client_id = ord.client_id
+    and dlytrn.wh_id = ord.wh_id
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'PALPCK'
+    and dlytrn.oprcod in ('PCK', 'PCKACO')
+    and dlytrn.to_arecod like 'RDT%'
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        ord.ordtyp
+ union
+ select count(distinct dlytrn.usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Surtido De Pieza Directo' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        ord.ordtyp tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        trunc(sum(dlytrn.trnqty / prtftp_dtl.untqty)) Bultos,
+        sum(mod(dlytrn.trnqty, prtftp_dtl.untqty)) pz_sueltas,
+        sum(dlytrn.trnqty *((prtftp_dtl.len *prtftp_dtl.wid * prtftp_dtl.hgt) / 1000000)) m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join locmst
+     on dlytrn.frstol = locmst.stoloc
+    and dlytrn.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+   LEFT
+   JOIN prtftp
+     ON prtftp.prtnum = dlytrn.prtnum
+    AND prtftp.prt_client_id = dlytrn.prt_client_id
+    and prtftp.wh_id = dlytrn.wh_id
+    AND prtftp.defftp_flg = 1
+   LEFT
+   JOIN prtftp_dtl
+     ON prtftp.prtnum = prtftp_dtl.prtnum
+    AND prtftp.ftpcod = prtftp_dtl.ftpcod
+    and prtftp.wh_id = prtftp_dtl.wh_id
+    AND prtftp_dtl.uomcod = 'CJ'
+   left
+   join ord
+     on dlytrn.ordnum = ord.ordnum
+    and dlytrn.client_id = ord.client_id
+    and dlytrn.wh_id = ord.wh_id
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'PCEPCK'
+    and dlytrn.oprcod = 'PPK'
+    and dlytrn.to_arecod like 'RDT%'
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        ord.ordtyp
+ union
+ select count(distinct dlytrn.usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Surtido De Caja Directo' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        ord.ordtyp tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        trunc(sum(dlytrn.trnqty / prtftp_dtl.untqty)) Bultos,
+        sum(mod(dlytrn.trnqty, prtftp_dtl.untqty)) pz_sueltas,
+        sum(dlytrn.trnqty *((prtftp_dtl.len *prtftp_dtl.wid * prtftp_dtl.hgt) / 1000000)) m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join locmst
+     on dlytrn.frstol = locmst.stoloc
+    and dlytrn.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+   LEFT
+   JOIN prtftp
+     ON prtftp.prtnum = dlytrn.prtnum
+    AND prtftp.prt_client_id = dlytrn.prt_client_id
+    and prtftp.wh_id = dlytrn.wh_id
+    AND prtftp.defftp_flg = 1
+   LEFT
+   JOIN prtftp_dtl
+     ON prtftp.prtnum = prtftp_dtl.prtnum
+    AND prtftp.ftpcod = prtftp_dtl.ftpcod
+    and prtftp.wh_id = prtftp_dtl.wh_id
+    AND prtftp_dtl.uomcod = 'CJ'
+   left
+   join ord
+     on dlytrn.ordnum = ord.ordnum
+    and dlytrn.client_id = ord.client_id
+    and dlytrn.wh_id = ord.wh_id
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'CASPCK'
+    and dlytrn.oprcod = 'CPK'
+    and dlytrn.to_arecod like 'RDT%'
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        ord.ordtyp
+ union
+ select count(distinct dlytrn.usr_id) total,
+        max(to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS')) fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Lista de Surtido' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        ord.ordtyp tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        trunc(sum(dlytrn.trnqty / prtftp_dtl.untqty)) Bultos,
+        sum(mod(dlytrn.trnqty, prtftp_dtl.untqty)) pz_sueltas,
+        sum(dlytrn.trnqty *((prtftp_dtl.len *prtftp_dtl.wid * prtftp_dtl.hgt) / 1000000)) m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join locmst
+     on dlytrn.frstol = locmst.stoloc
+    and dlytrn.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+   LEFT
+   JOIN prtftp
+     ON prtftp.prtnum = dlytrn.prtnum
+    AND prtftp.prt_client_id = dlytrn.prt_client_id
+    and prtftp.wh_id = dlytrn.wh_id
+    AND prtftp.defftp_flg = 1
+   LEFT
+   JOIN prtftp_dtl
+     ON prtftp.prtnum = prtftp_dtl.prtnum
+    AND prtftp.ftpcod = prtftp_dtl.ftpcod
+    and prtftp.wh_id = prtftp_dtl.wh_id
+    AND prtftp_dtl.uomcod = 'CJ'
+   left
+   join ord
+     on dlytrn.ordnum = ord.ordnum
+    and dlytrn.client_id = ord.client_id
+    and dlytrn.wh_id = ord.wh_id
+   join prtmst
+     on dlytrn.prtnum = prtmst.prtnum
+    and dlytrn.client_id = prtmst.prt_client_id
+    and dlytrn.wh_id = prtmst.wh_id_tmpl
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'LSTPCK'
+    and dlytrn.oprcod in ('LPCK', 'LPCKACO', 'LPCKORD', 'LPCKORDCJ', 'LPCKORDPZ', 'LPCKWKO', 'RLPCK')
+    and dlytrn.to_arecod like 'RDT%'
+    and prtmst.ser_typ is null
+  group by (to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS')),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        dlytrn.to_lodnum,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        ord.ordtyp
+ union
+ SELECT COUNT(1) total,
+        max(fecha) FF,
+        usr_id,
+        prt_client_id,
+        operacion,
+        carton,
+        SUM(qty_lineas_carton) qty_lineas_carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(bultos) bultos,
+        sum(pz_sueltas) pz_sueltas,
+        SUM(m3) m3,
+        arecod,
+        sto_zone_id,
+        familia,
+        dificultad
+   from (select dlytrn.usr_id total,
+                to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+                dlytrn.usr_id,
+                dlytrn.prt_client_id,
+                'Lista de Surtido Series' operacion,
+                'No Clasifica' carton,
+                to_number('0') qty_lineas_carton,
+                dlytrn.wh_id,
+                dlytrn.ordnum,
+                ord.ordtyp tipo_orden,
+                sum(dlytrn.trnqty) trnqty,
+                trunc(sum(dlytrn.trnqty / prtftp_dtl.untqty)) Bultos,
+                sum(mod(dlytrn.trnqty, prtftp_dtl.untqty)) pz_sueltas,
+                sum(dlytrn.trnqty *((prtftp_dtl.len *prtftp_dtl.wid * prtftp_dtl.hgt) / 1000000)) m3,
+                locmst.arecod,
+                sto_zone.sto_zone_id,
+                'No Clasifica' familia,
+                'No Clasifica' dificultad,
+                dlytrn.to_lodnum,
+                dlytrn.frstol,
+                dlytrn.dlytrn_id
+           from dlytrn
+           left
+           join locmst
+             on dlytrn.frstol = locmst.stoloc
+            and dlytrn.wh_id = locmst.wh_id
+           left
+           join sto_zone
+             on locmst.sto_zone_id = sto_zone.sto_zone_id
+            and locmst.wh_id = sto_zone.wh_id
+           LEFT
+           JOIN prtftp
+             ON prtftp.prtnum = dlytrn.prtnum
+            AND prtftp.prt_client_id = dlytrn.prt_client_id
+            and prtftp.wh_id = dlytrn.wh_id
+            AND prtftp.defftp_flg = 1
+           LEFT
+           JOIN prtftp_dtl
+             ON prtftp.prtnum = prtftp_dtl.prtnum
+            AND prtftp.ftpcod = prtftp_dtl.ftpcod
+            and prtftp.wh_id = prtftp_dtl.wh_id
+            AND prtftp_dtl.uomcod = 'CJ'
+           left
+           join ord
+             on dlytrn.ordnum = ord.ordnum
+            and dlytrn.client_id = ord.client_id
+            and dlytrn.wh_id = ord.wh_id
+           join prtmst
+             on dlytrn.prtnum = prtmst.prtnum
+            and dlytrn.client_id = prtmst.prt_client_id
+            and dlytrn.wh_id = prtmst.wh_id_tmpl
+          where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+            and to_char(sysdate - @dias_final, 'YYYYMMDD')
+            and dlytrn.actcod = 'LSTPCK'
+            and dlytrn.oprcod in ('LPCK', 'LPCKACO', 'LPCKORD', 'LPCKORDCJ', 'LPCKORDPZ', 'LPCKWKO')
+            and dlytrn.to_arecod like 'RDT%'
+            and prtmst.ser_typ is not null
+          group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+                dlytrn.usr_id,
+                dlytrn.prt_client_id,
+                dlytrn.wh_id,
+                dlytrn.ordnum,
+                dlytrn.to_lodnum,
+                locmst.arecod,
+                sto_zone.sto_zone_id,
+                dlytrn.to_lodnum,
+                dlytrn.frstol,
+                ord.ordtyp,
+                dlytrn.dlytrn_id)
+  GROUP BY usr_id,
+        prt_client_id,
+        operacion,
+        carton,
+        wh_id,
+        ordnum,
+        tipo_orden,
+        arecod,
+        sto_zone_id,
+        familia,
+        dificultad
+ union
+ select count(distinct lodnum) total,
+        max(to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS')) fecha,
+        usr_id,
+        prt_client_id,
+        'RF Outbound Audit' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        'No Clasifica' arecod,
+        0 sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'RFOUTAUD'
+    and dlytrn.oprcod = 'RFOUTAUD'
+  group by usr_id,
+        prt_client_id,
+        wh_id,
+        ordnum
+ union
+ select count(distinct dlytrn.to_subnum) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Empaque' operacion,
+        (select uc_log_cambios_bultos_emp.new_carton
+           from uc_log_cambios_bultos_emp
+          WHERE uc_log_cambios_bultos_emp.tipo = 'PKOCLOSE'
+            and uc_log_cambios_bultos_emp.subnum = dlytrn.to_subnum
+            and uc_log_cambios_bultos_emp.wh_id = dlytrn.wh_id
+            and uc_log_cambios_bultos_emp.client_id = dlytrn.prt_client_id
+            and rownum < 2) carton,
+        to_number(count(dlytrn.dlytrn_id)) qty_lineas_carton,
+        dlytrn.wh_id,
+        uc_log_cambios_bultos_emp.ordnum,
+        uc_log_cambios_bultos_emp.ordtyp tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        SUM(uc_log_cambios_bultos_emp.bultos) Bultos,
+        sum(uc_log_cambios_bultos_emp.pz_sueltas) pz_sueltas,
+        sum((uc_log_cambios_bultos_emp.new_alto*uc_log_cambios_bultos_emp.new_ancho*uc_log_cambios_bultos_emp.new_largo) / 1000000) m3,
+        'No Clasifica' arecod,
+        0 sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join uc_log_cambios_bultos_emp
+     on uc_log_cambios_bultos_emp.tipo = 'PKOCLOSE'
+    and uc_log_cambios_bultos_emp.subnum = dlytrn.to_subnum
+    and uc_log_cambios_bultos_emp.wh_id = dlytrn.wh_id
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'PKOCLOSE'
+    and dlytrn.to_subnum is not null
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.usr_id,
+        uc_log_cambios_bultos_emp.ordtyp,
+        uc_log_cambios_bultos_emp.ordnum,
+        dlytrn.to_subnum
+ union
+ select count(distinct lodnum) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        usr_id,
+        prt_client_id,
+        'Toma Series' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        'No Clasifica' arecod,
+        0 sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod is null
+    and dlytrn.oprcod is null
+    and dlytrn.prtnum is not null
+    and exists(select dly.lodnum
+                 from dlytrn dly
+                where dly.lodnum = dlytrn.lodnum
+                  and dly.wh_id = dlytrn.wh_id
+                  and dly.oprcod = 'SERNUMCAP')
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        prt_client_id,
+        usr_id,
+        wh_id,
+        ordnum
+ union
+ select count(distinct subnum) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        usr_id,
+        prt_client_id,
+        'Pallet Building' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        'No Clasifica' arecod,
+        0 sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'PALBLD'
+    and dlytrn.oprcod = 'PALBLD'
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        prt_client_id,
+        wh_id,
+        usr_id,
+        ordnum
+ union
+ select count(distinct dlytrn.to_lodnum) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        usr_id,
+        prt_client_id,
+        'Consolidacion Bins' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        'No Clasifica' arecod,
+        0 sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'PUTSTOMOV'
+    and dlytrn.oprcod = 'UTR'
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        prt_client_id,
+        usr_id,
+        wh_id,
+        ordnum
+ union
+ select count(distinct dlytrn.to_lodnum) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        usr_id,
+        prt_client_id,
+        'Reabastos de Nivel' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        'No Clasifica' arecod,
+        0 sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod in ('OTHRPL', 'CASRPL', 'PALRPL')
+    and dlytrn.oprcod in ('TRN', 'CRP', 'PRP')
+    and dlytrn.to_arecod in ('CIALMTC', 'FAALMTC')
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        prt_client_id,
+        usr_id,
+        wh_id,
+        ordnum
+ union
+ select count(distinct dlytrn.to_lodnum) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        usr_id,
+        prt_client_id,
+        'Reabastos de Nivel Logimat' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        'No Clasifica' arecod,
+        0 sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod in ('FL_XFR', 'OTHRPL', 'PL_XFR', 'TR_DIR', 'UPCK')
+    and dlytrn.oprcod in ('UTR', 'CRP')
+    and dlytrn.to_arecod in ('CISTGLOG1', 'CISTGLOG2')
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        prt_client_id,
+        usr_id,
+        wh_id,
+        ordnum
+ union
+ select count(distinct dlytrn.lodnum) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        usr_id,
+        prt_client_id,
+        'Impresion de Guia' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        wh_id,
+        ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(trnqty) trnqty,
+        SUM(0) Bultos,
+        sum(0) pz_sueltas,
+        to_number('0') m3,
+        'No Clasifica' arecod,
+        0 sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'PRINT-GUIA-LABEL'
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        prt_client_id,
+        usr_id,
+        wh_id,
+        ordnum
+ union
+ select count(distinct dlytrn.usr_id) total,
+        max(to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS')) fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Lista de Surtido Logimat' operacion,
+        'No Clasifica' carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        'Tipo de orden' tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        trunc(sum(dlytrn.trnqty / prtftp_dtl.untqty)) Bultos,
+        sum(mod(dlytrn.trnqty, prtftp_dtl.untqty)) pz_sueltas,
+        sum(dlytrn.trnqty *((prtftp_dtl.len *prtftp_dtl.wid * prtftp_dtl.hgt) / 1000000)) m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join locmst
+     on dlytrn.frstol = locmst.stoloc
+    and dlytrn.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+   LEFT
+   JOIN prtftp
+     ON prtftp.prtnum = dlytrn.prtnum
+    AND prtftp.prt_client_id = dlytrn.prt_client_id
+    and prtftp.wh_id = dlytrn.wh_id
+    AND prtftp.defftp_flg = 1
+   LEFT
+   JOIN prtftp_dtl
+     ON prtftp.prtnum = prtftp_dtl.prtnum
+    AND prtftp.ftpcod = prtftp_dtl.ftpcod
+    and prtftp.wh_id = prtftp_dtl.wh_id
+    AND prtftp_dtl.uomcod = 'CJ'
+   join prtmst
+     on dlytrn.prtnum = prtmst.prtnum
+    and dlytrn.client_id = prtmst.prt_client_id
+    and dlytrn.wh_id = prtmst.wh_id_tmpl
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.actcod = 'LSTPCK'
+    and dlytrn.oprcod in ('LPCK', 'LPCKACO', 'LPCKORD', 'LPCKORDCJ', 'LPCKORDPZ', 'LPCKWKO', 'RLPCK')
+    and dlytrn.to_arecod like 'CIPDLOGIT%'
+    and prtmst.ser_typ is null
+  group by (to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS')),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        dlytrn.to_lodnum,
+        locmst.arecod,
+        sto_zone.sto_zone_id
+ union
+ select count(distinct dlytrn.usr_id) total,
+        to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        'Transferencias a Logimat' operacion,
+        dlytrn.subnum carton,
+        to_number('0') qty_lineas_carton,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(dlytrn.trnqty) trnqty,
+        trunc(sum(dlytrn.trnqty / prtftp_dtl.untqty)) Bultos,
+        sum(mod(dlytrn.trnqty, prtftp_dtl.untqty)) pz_sueltas,
+        sum(dlytrn.trnqty *((prtftp_dtl.len *prtftp_dtl.wid * prtftp_dtl.hgt) / 1000000)) m3,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   from dlytrn
+   left
+   join locmst
+     on dlytrn.tostol = locmst.stoloc
+    and dlytrn.wh_id = locmst.wh_id
+   left
+   join sto_zone
+     on locmst.sto_zone_id = sto_zone.sto_zone_id
+    and locmst.wh_id = sto_zone.wh_id
+   LEFT
+   JOIN prtftp
+     ON prtftp.prtnum = dlytrn.prtnum
+    AND prtftp.prt_client_id = dlytrn.prt_client_id
+    and prtftp.wh_id = dlytrn.wh_id
+    AND prtftp.defftp_flg = 1
+   LEFT
+   JOIN prtftp_dtl
+     ON prtftp.prtnum = prtftp_dtl.prtnum
+    AND prtftp.ftpcod = prtftp_dtl.ftpcod
+    and prtftp.wh_id = prtftp_dtl.wh_id
+    AND prtftp_dtl.uomcod = 'CJ'
+  where to_char(dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+    and dlytrn.oprcod = 'UTR'
+    and dlytrn.actcod = 'FL_XFR'
+    and dlytrn.to_arecod like 'CIALMLOG%'
+  group by to_char(dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        dlytrn.usr_id,
+        dlytrn.prt_client_id,
+        dlytrn.wh_id,
+        dlytrn.ordnum,
+        locmst.arecod,
+        sto_zone.sto_zone_id,
+        dlytrn.subnum
+ union
+ SELECT count(distinct ap_dlytrn.dlytrnusr) total,
+        to_char(ap_dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS') fecha,
+        ap_dlytrn.dlytrnusr,
+        ap_dlytrn.prt_client_id,
+        'Reporte de Cadena Fria' operacion,
+        ap_dlytrn.subnum carton,
+        to_number('0') qty_lineas_carton,
+        ap_dlytrn.wh_id,
+        ap_dlytrn.ordnum,
+        'Tipo de Orden' tipo_orden,
+        sum(ap_dlytrn.trnqty) trnqty,
+        to_number('0') Bultos,
+        to_number('0') pz_sueltas,
+        to_number('0') m3,
+        '' arecod,
+        to_number('0') sto_zone_id,
+        'No Clasifica' familia,
+        'No Clasifica' dificultad
+   FROM ap_dlytrn
+  WHERE ap_dlytrn.oprcod = 'AP-MONITORES'
+    and ap_dlytrn.actcod = 'VERIFI-ORDER'
+    and to_char(ap_dlytrn.trndte, 'YYYYMMDD') between to_char(sysdate - @dias_inicial, 'YYYYMMDD')
+    and to_char(sysdate - @dias_final, 'YYYYMMDD')
+  group by to_char(ap_dlytrn.trndte, 'MM/DD/YYYY HH24:MI:SS'),
+        ap_dlytrn.dlytrnusr,
+        ap_dlytrn.prt_client_id,
+        ap_dlytrn.wh_id,
+        ap_dlytrn.ordnum,
+        ap_dlytrn.subnum] catch(@?) >> data
+|
+if (rowcount(@data) > 0)
+{
+    write csv file
+     where filnam = @filnam
+       and path = @path1
+       and resdata = @data
+}
